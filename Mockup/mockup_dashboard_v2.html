@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="id" class="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — E-Office Banyumas (Mockup v2 · revisi pembimbing)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300,0,0" rel="stylesheet">
+<script>
+tailwind.config = { darkMode: 'class', theme: { extend: {
+  fontFamily: { sans: ['Inter','sans-serif'] },
+  colors: { brand: '#D32F2F', branddark: '#AF101A', ink: '#0F172A' }
+}}};
+</script>
+<style>.material-symbols-outlined{font-size:20px}</style>
+</head>
+<body class="font-sans bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen">
+
+<!-- Bilah demo (hanya mockup) -->
+<div class="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 text-xs px-4 py-2 flex flex-wrap gap-x-4 gap-y-1 items-center justify-center">
+  <span class="font-semibold uppercase tracking-widest">Mockup v2 · semua aplikasi tampil, akses ditandai (FR-D07–D15)</span>
+  <label class="flex items-center gap-2">Lihat sebagai:
+    <select id="roleSel" class="rounded border border-amber-300 dark:border-amber-700 bg-white dark:bg-slate-800 px-2 py-0.5">
+      <option value="admin">Admin (semua akses)</option>
+      <option value="dinkes" selected>Pegawai DINKES</option>
+      <option value="setda">Pegawai SETDA</option>
+    </select>
+  </label>
+</div>
+
+<!-- Navbar -->
+<header class="sticky top-0 z-30 bg-ink text-white border-b border-slate-800">
+  <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-brand grid place-items-center font-bold">E</div>
+      <p class="font-semibold tracking-tight">E-Office <span class="text-red-400">Banyumas</span></p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="themeBtn" aria-label="Ganti tema" class="p-2 rounded-lg text-slate-300 hover:bg-slate-800 transition">
+        <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+      </button>
+      <div class="relative">
+        <button id="userBtn" class="flex items-center gap-2 rounded-lg bg-slate-800 hover:bg-slate-700 pl-2 pr-3 py-1.5 text-sm font-medium transition">
+          <span class="w-7 h-7 rounded-full bg-brand grid place-items-center text-xs font-bold">AN</span>
+          <span class="text-left leading-tight">ADI NUGROHO, S.Kom.<span id="userOpd" class="block text-[10px] font-normal text-slate-400">DINKES</span></span>
+          <span class="material-symbols-outlined text-slate-400" style="font-size:16px">expand_more</span>
+        </button>
+        <div id="userMenu" class="hidden absolute right-0 mt-2 w-44 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-lg shadow-slate-900/10 py-1 text-sm">
+          <a href="#" class="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700"><span class="material-symbols-outlined" style="font-size:17px">lock</span> Ubah sandi</a>
+          <a href="#" class="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700 text-brand"><span class="material-symbols-outlined" style="font-size:17px">logout</span> Logout</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="bg-ink text-white">
+  <div class="max-w-7xl mx-auto px-6 pt-14 pb-16 text-center">
+    <p class="text-[11px] font-semibold tracking-[0.2em] uppercase text-red-400">Sistem Pemerintahan Berbasis Elektronik</p>
+    <h1 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">E-Office Kabupaten Banyumas</h1>
+    <p class="mt-4 max-w-2xl mx-auto text-slate-300 text-sm sm:text-base leading-relaxed">
+      Portal aplikasi terintegrasi bagi user OPD — seluruh aplikasi ditampilkan;
+      aplikasi di luar hak akses Anda ditandai dan tidak dapat dibuka.
+    </p>
+    <a href="#apps" class="mt-7 inline-flex items-center gap-2 rounded-lg bg-brand hover:bg-branddark px-6 py-3 text-sm font-semibold transition">
+      Mulai eksplorasi aplikasi <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
+    </a>
+  </div>
+</section>
+
+<main class="max-w-7xl mx-auto px-6 pb-20">
+
+  <section class="mt-12">
+    <h2 class="text-lg font-semibold tracking-tight">Aplikasi paling sering diakses</h2>
+    <div id="topApps" class="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
+  </section>
+
+  <section id="apps" class="mt-14">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h2 class="text-lg font-semibold tracking-tight">Aplikasi Kabupaten Banyumas</h2>
+      <div id="tabs" class="flex flex-wrap gap-2 text-sm"></div>
+    </div>
+
+    <div class="mt-5 flex flex-wrap gap-2" id="statusChips"></div>
+    <div class="mt-2 flex flex-wrap gap-2" id="accessChips"></div>
+    <div class="mt-2 flex flex-wrap gap-2" id="catChips"></div>
+
+    <div class="relative mt-5 max-w-xl">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">search</span>
+      <input id="q" type="search" placeholder="Cari nama aplikasi, OPD, atau deskripsi…"
+        class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
+    </div>
+
+    <div id="grid" class="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    <p id="empty" class="hidden mt-10 text-center text-sm text-slate-500">Tidak ada aplikasi yang cocok dengan filter.</p>
+  </section>
+</main>
+
+<footer class="border-t border-slate-200 dark:border-slate-800 py-8">
+  <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+    <p>© 2026 Dinkominfo Kabupaten Banyumas. Seluruh hak cipta dilindungi.</p>
+    <div class="flex gap-5"><a href="#" class="hover:text-brand">Kebijakan privasi</a><a href="#" class="hover:text-brand">Kontak</a><a href="#" class="hover:text-brand">Peta situs</a></div>
+  </div>
+</footer>
+
+<!-- Toast FR-D14 -->
+<div id="toast" class="hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-lg bg-ink text-white text-sm px-4 py-3 shadow-lg">
+  <span class="material-symbols-outlined text-red-400" style="font-size:18px">lock</span>
+  Anda tidak memiliki akses ke aplikasi ini.
+</div>
+
+<!-- Modal kuisioner (FR-Q10–Q16) -->
+<div id="quizOverlay" class="fixed inset-0 z-40 bg-slate-900/70 grid place-items-center p-4">
+  <div class="w-full max-w-md rounded-2xl bg-white dark:bg-slate-800 overflow-hidden shadow-xl shadow-slate-900/20">
+    <div class="relative h-36 bg-ink grid place-items-center">
+      <div class="absolute inset-0 opacity-20" style="background:radial-gradient(circle at 30% 30%, #D32F2F 0, transparent 55%)"></div>
+      <span class="material-symbols-outlined text-red-400" style="font-size:52px">ballot</span>
+      <button id="quizClose" aria-label="Tutup" class="absolute top-3 right-3 w-8 h-8 grid place-items-center rounded-full bg-brand text-white hover:bg-branddark transition">
+        <span class="material-symbols-outlined" style="font-size:18px">close</span>
+      </button>
+    </div>
+    <div class="p-6">
+      <p class="text-[11px] font-semibold tracking-[0.15em] uppercase text-brand">Kuisioner · 1–31 Juli 2026</p>
+      <h3 class="mt-1.5 text-lg font-semibold tracking-tight">Survei Kepuasan Layanan TIK 2026</h3>
+      <p class="mt-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+        Bantu Dinkominfo meningkatkan kualitas layanan E-Office dengan mengisi survei singkat di Google Form (± 3 menit).
+      </p>
+      <p class="mt-4 flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+        <span class="material-symbols-outlined" style="font-size:18px">group</span>
+        <span id="quizCount">1.248</span> pegawai sudah klik kuisioner
+      </p>
+      <div class="mt-5 flex items-center gap-3">
+        <button id="quizGo" class="flex-1 rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold py-2.5 transition">Isi kuisioner</button>
+        <button id="quizLater" class="text-sm font-medium text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 px-3 py-2.5">Nanti saja</button>
+      </div>
+      <p class="mt-3 text-[11px] text-slate-400">Partisipasi dihitung berdasarkan klik tombol, bukan submit Google Form.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- Data contoh (sistem nyata: DB; can_access dari policy — FR-A10) ---------- */
+const APPS = [
+ {n:'SIMPUS',             opd:'DINKES',         g:'smartcity', c:'kesehatan',  on:true,  new:false, links:['Backend','Frontend'],   m:3819,  y:83723,  acc:['dinkes'],          d:'Sistem informasi puskesmas'},
+ {n:'SIMLOG',             opd:'DINKES',         g:'tools',     c:'kesehatan',  on:true,  new:false, links:['Backend','Backend V2'], m:29,    y:510,    acc:['dinkes'],          d:'Sistem informasi logistik'},
+ {n:'Simpatik Integrasi', opd:'BKPSDM',         g:'smartcity', c:'kinerja',    on:true,  new:false, links:['Backend'],              m:13900, y:257259, acc:['dinkes','setda'],  d:'Integrasi kepegawaian'},
+ {n:'Jegos 3.0',          opd:'SETDA',          g:'smartcity', c:'governance', on:true,  new:false, links:['Backend','Frontend'],   m:461,   y:11651,  acc:['setda'],           d:'Jendela gotong royong'},
+ {n:'SI Organisasi',      opd:'SETDA',          g:'spbe',      c:'governance', on:true,  new:false, links:['Backend'],              m:423,   y:1154,   acc:['setda'],           d:'Kelembagaan organisasi'},
+ {n:'JDIH',               opd:'SETDA',          g:'spbe',      c:'governance', on:true,  new:false, links:['Backend','Frontend'],   m:19,    y:338,    acc:['dinkes','setda'],  d:'Dokumentasi & informasi hukum'},
+ {n:'SIMAS',              opd:'DINKOMINFO',     g:'spbe',      c:'data',       on:true,  new:false, links:['Backend'],              m:352,   y:9364,   acc:['setda'],           d:'Sistem informasi arsip'},
+ {n:'E-Planning',         opd:'BAPPEDALITBANG', g:'smartcity', c:'rencana',    on:true,  new:false, links:['Backend','Frontend'],   m:54,    y:151,    acc:['setda'],           d:'Perencanaan pembangunan daerah'},
+ {n:'Satria Pajak New',   opd:'BAPENDA',        g:'smartcity', c:'pajak',      on:true,  new:true,  links:['Backend','Frontend'],   m:92,    y:1907,   acc:['setda'],           d:'Layanan pajak daerah'},
+ {n:'Dolan Banyumas',     opd:'DINPORABUDPAR',  g:'smartcity', c:'wisata',     on:false, new:false, links:['Backend'],              m:40,    y:1083,   acc:['dinkes','setda'],  d:'Portal pariwisata'},
+ {n:'Simklinik',          opd:'DINKES',         g:'smartcity', c:'kesehatan',  on:true,  new:true,  links:['Backend'],              m:23,    y:798,    acc:['dinkes'],          d:'Manajemen klinik'},
+ {n:'WBS',                opd:'INSPEKTORAT',    g:'spbe',      c:'governance', on:true,  new:false, links:['Backend'],              m:1,     y:39,     acc:['dinkes','setda'],  d:'Whistleblowing system'},
+];
+const CATS = ['governance','economy','kinerja','gawai','rencana','uang','pajak','kesehatan','data','wisata','umum'];
+const fmt = n => n.toLocaleString('id-ID');
+const state = {role:'dinkes', tab:'all', status:'all', access:'all', cat:'all', q:''};
+const canAccess = a => state.role==='admin' || a.acc.includes(state.role);
+
+function chip(label, active){
+  return `class="px-3 py-1.5 rounded-full text-xs font-medium border transition ${active
+    ? 'bg-ink text-white border-ink dark:bg-slate-100 dark:text-slate-900 dark:border-slate-100'
+    : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'}"`;
+}
+
+function card(a){
+  const ok = canAccess(a);
+  const ini = a.n.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  /* FR-D11/D12: kartu tanpa akses TETAP TAMPIL — warna beda + gembok + label + tombol nonaktif */
+  return `
+  <article class="rounded-xl border p-5 flex flex-col gap-3 transition ${ok
+    ? 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500'
+    : 'border-dashed border-slate-300 dark:border-slate-600 bg-slate-100/70 dark:bg-slate-800/40'}">
+    <div class="flex items-start justify-between gap-2">
+      <p class="text-[11px] font-semibold tracking-[0.12em] uppercase text-slate-400">${a.opd}</p>
+      <div class="flex gap-1.5">
+        <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold ${a.on
+          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+          : 'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300'}">${a.on?'Aktif':'Tidak aktif'}</span>
+        ${ok?'':'<span class="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300"><span class="material-symbols-outlined" style="font-size:12px">lock</span>Tidak Memiliki Akses</span>'}
+      </div>
+    </div>
+    <div class="flex items-center gap-3 ${ok?'':'opacity-60'}">
+      <div class="w-11 h-11 rounded-lg ${ok?'bg-slate-100 dark:bg-slate-700':'bg-slate-200 dark:bg-slate-700/60'} grid place-items-center text-sm font-bold text-slate-500 dark:text-slate-300">
+        ${ok?ini:'<span class="material-symbols-outlined">lock</span>'}
+      </div>
+      <div>
+        <h3 class="font-semibold leading-tight">${a.n} ${a.new?'<span class="ml-1 align-middle px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-semibold uppercase">Baru</span>':''}</h3>
+        <p class="text-xs text-slate-400">${a.d} · <span class="capitalize">${a.c}</span></p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      ${a.links.map(l=> ok
+        ? `<button onclick="launch('${a.n}')" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:border-brand hover:text-brand transition">${l}</button>`
+        : `<button onclick="denied()" aria-disabled="true" class="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-400 dark:text-slate-500 cursor-not-allowed bg-slate-50 dark:bg-slate-800/60">${l}</button>`
+      ).join('')}
+    </div>
+    <p class="mt-auto pt-2 border-t ${ok?'border-slate-100 dark:border-slate-700':'border-slate-200/70 dark:border-slate-700/60'} text-xs text-slate-400 flex items-center gap-1.5">
+      <span class="material-symbols-outlined" style="font-size:15px">bar_chart</span>
+      ${fmt(a.m)} pengunjung bln ini · ${fmt(a.y)} thn ini
+    </p>
+  </article>`;
+}
+
+function render(){
+  /* FR-D07: SELURUH aplikasi selalu menjadi basis; akses hanya penanda */
+  const all = APPS;
+  const counts = {all:all.length, smartcity:0, spbe:0, tools:0, baru:0};
+  all.forEach(a=>{counts[a.g]++; if(a.new)counts.baru++;});
+  document.getElementById('tabs').innerHTML = [
+    ['all',`Semua (${counts.all})`],['smartcity',`Smart City (${counts.smartcity})`],
+    ['spbe',`SPBE (${counts.spbe})`],['tools',`Tools (${counts.tools})`],['baru',`Aplikasi baru (${counts.baru})`]
+  ].map(([k,l])=>`<button data-tab="${k}" ${chip(l, state.tab===k)}>${l}</button>`).join('');
+
+  const nAktif = all.filter(a=>a.on).length;
+  document.getElementById('statusChips').innerHTML = [
+    ['all',`Semua (${all.length})`],['on',`Aktif (${nAktif})`],['off',`Tidak aktif (${all.length-nAktif})`]
+  ].map(([k,l])=>`<button data-status="${k}" ${chip(l, state.status===k)}>${l}</button>`).join('');
+
+  const nAkses = all.filter(canAccess).length;
+  document.getElementById('accessChips').innerHTML = [
+    ['all','Semua akses'],['yes',`Dapat diakses (${nAkses})`],['no',`Tidak dapat diakses (${all.length-nAkses})`]
+  ].map(([k,l])=>`<button data-access="${k}" ${chip(l, state.access===k)}>${l}</button>`).join('');
+
+  document.getElementById('catChips').innerHTML =
+    [['all','Semua kategori'],...CATS.map(c=>[c, c[0].toUpperCase()+c.slice(1)+` (${all.filter(a=>a.c===c).length})`])]
+    .map(([k,l])=>`<button data-cat="${k}" ${chip(l, state.cat===k)}>${l}</button>`).join('');
+
+  const rows = all.filter(a=>
+    (state.tab==='all' || (state.tab==='baru'? a.new : a.g===state.tab)) &&
+    (state.status==='all' || (state.status==='on'? a.on : !a.on)) &&
+    (state.access==='all' || (state.access==='yes') === canAccess(a)) &&
+    (state.cat==='all' || a.c===state.cat) &&
+    (a.n+' '+a.opd+' '+a.d).toLowerCase().includes(state.q));
+  document.getElementById('grid').innerHTML = rows.map(card).join('');
+  document.getElementById('empty').classList.toggle('hidden', rows.length>0);
+
+  document.getElementById('topApps').innerHTML = [...all].filter(a=>a.on).sort((x,y)=>y.m-x.m).slice(0,5)
+    .map(a=>`<div class="rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-center hover:border-slate-300 transition ${canAccess(a)?'':'opacity-60'}">
+       <p class="text-[10px] font-semibold tracking-widest uppercase text-slate-400">${a.opd}</p>
+       <p class="mt-1.5 text-sm font-semibold leading-tight flex items-center justify-center gap-1">${canAccess(a)?'':'<span class="material-symbols-outlined" style="font-size:13px">lock</span>'}${a.n}</p>
+       <p class="mt-1 text-[11px] text-slate-400">${fmt(a.m)} / bln</p></div>`).join('');
+
+  document.getElementById('userOpd').textContent =
+    state.role==='admin' ? 'ADMIN · DINKOMINFO' : state.role==='dinkes' ? 'DINKES' : 'SETDA';
+}
+
+/* FR-D30 vs FR-D31: hanya klik berhak yang "tercatat" */
+let toastT;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.lastChild.textContent = ' ' + msg;
+  t.classList.remove('hidden');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.add('hidden'), 2600);
+}
+function launch(name){ showToast(`Kunjungan ${name} tercatat — membuka aplikasi… (simulasi)`); }
+function denied(){ showToast('Anda tidak memiliki akses ke aplikasi ini.'); }
+
+document.body.addEventListener('click', e=>{
+  const t = e.target.closest('[data-tab],[data-status],[data-access],[data-cat]'); if(!t) return;
+  if(t.dataset.tab) state.tab=t.dataset.tab;
+  if(t.dataset.status) state.status=t.dataset.status;
+  if(t.dataset.access) state.access=t.dataset.access;
+  if(t.dataset.cat) state.cat=t.dataset.cat;
+  render();
+});
+document.getElementById('q').addEventListener('input', e=>{state.q=e.target.value.toLowerCase(); render();});
+document.getElementById('roleSel').addEventListener('change', e=>{state.role=e.target.value; render();});
+
+const menu=document.getElementById('userMenu');
+document.getElementById('userBtn').addEventListener('click',e=>{e.stopPropagation();menu.classList.toggle('hidden');});
+document.addEventListener('click',()=>menu.classList.add('hidden'));
+
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const d=document.documentElement.classList.toggle('dark');
+  document.getElementById('themeIcon').textContent = d?'light_mode':'dark_mode';
+});
+
+const overlay=document.getElementById('quizOverlay');
+const hide=()=>overlay.classList.add('hidden');
+document.getElementById('quizClose').addEventListener('click',hide);
+document.getElementById('quizLater').addEventListener('click',hide);
+overlay.addEventListener('click',e=>{if(e.target===overlay)hide();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});
+document.getElementById('quizGo').addEventListener('click',()=>{
+  /* FR-Q15/Q16: catat klik (idempoten) lalu buka Google Form */
+  document.getElementById('quizCount').textContent=(1249).toLocaleString('id-ID');
+  showToast('Partisipasi tercatat — membuka Google Form… (simulasi)');
+  setTimeout(hide,600);
+});
+
+render();
+</script>
+</body>
+</html>
