@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\PasswordController;
 use Illuminate\Support\Facades\Route;
 
@@ -18,4 +19,9 @@ Route::middleware('auth')->group(function () {
     // Change password (FR-A06)
     Route::get('/ubah-sandi', [PasswordController::class, 'edit'])->name('password.edit');
     Route::put('/ubah-sandi', [PasswordController::class, 'update'])->name('password.update');
+
+    // Launch an application (FR-A10): access-enforced (403), records the visit
+    Route::get('/launch/{application:slug}/{link?}', [LaunchController::class, 'launch'])
+        ->whereNumber('link')
+        ->name('launch');
 });

@@ -43,6 +43,7 @@ class DashboardController extends Controller
         $apps = $applications->map(fn ($a) => [
             'id' => $a->id,
             'name' => $a->name,
+            'slug' => $a->slug,
             'opd' => optional($a->opd)->code,
             'group' => $a->app_group,
             'category' => $a->category,
@@ -53,8 +54,8 @@ class DashboardController extends Controller
             'month_visits' => (int) ($monthCounts[$a->id] ?? 0),
             'year_visits' => (int) ($yearCounts[$a->id] ?? 0),
             'links' => $a->links->map(fn ($l) => [
+                'id' => $l->id,
                 'label' => $l->label,
-                'url' => $l->url,
                 'is_active' => (bool) $l->is_active,
             ])->values(),
         ])->values();

@@ -67,10 +67,6 @@ Alpine.data('dashboard', (apps) => ({
         return this.apps.filter((a) => a.category === c).length;
     },
 
-    launch(a) {
-        // Real recording (visit + activity log + redirect) lands with the auth module.
-        this.toast('Kunjungan ' + a.name + ' tercatat — membuka aplikasi… (simulasi)');
-    },
     denied() {
         this.toast('Anda tidak memiliki akses ke aplikasi ini.');
     },

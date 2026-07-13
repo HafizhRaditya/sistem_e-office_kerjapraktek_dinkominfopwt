@@ -135,11 +135,13 @@
 
                         <div class="flex flex-wrap gap-2">
                             <template x-for="l in a.links" :key="a.id + '-' + l.label">
-                                <button type="button" @click="a.can_access ? launch(a) : denied()"
+                                <a x-bind:href="a.can_access ? ('/launch/' + a.slug + '/' + l.id) : null"
+                                    x-bind:target="a.can_access ? '_blank' : null" rel="noopener"
+                                    @click="if (! a.can_access) { $event.preventDefault(); denied(); }"
                                     :aria-disabled="a.can_access ? 'false' : 'true'"
-                                    class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition"
-                                    :class="a.can_access ? 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-brand hover:text-brand' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed bg-slate-50 dark:bg-slate-800/60'"
-                                    x-text="l.label"></button>
+                                    class="px-3 py-1.5 rounded-lg border text-xs font-semibold transition select-none"
+                                    :class="a.can_access ? 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-brand hover:text-brand cursor-pointer' : 'border-slate-200 dark:border-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed bg-slate-50 dark:bg-slate-800/60'"
+                                    x-text="l.label"></a>
                             </template>
                         </div>
 
