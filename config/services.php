@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // Cloudflare Turnstile (FR-A02). Leave the keys empty in .env to skip
+    // verification during local development; set them to enable it in staging/prod.
+    'turnstile' => [
+        'sitekey' => env('TURNSTILE_SITEKEY'),
+        'secret' => env('TURNSTILE_SECRET'),
+    ],
+
 ];

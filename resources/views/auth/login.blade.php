@@ -80,13 +80,19 @@
                     @error('password') <p class="mt-1.5 text-xs text-brand">{{ $message }}</p> @enderror
                 </div>
 
-                {{-- Placeholder Cloudflare Turnstile (server-side verification lands with the auth module) --}}
-                <div class="flex items-center justify-between rounded-lg border border-slate-300 bg-slate-100/70 px-4 py-3">
-                    <label class="flex items-center gap-3 text-sm text-slate-600 cursor-pointer">
-                        <input type="checkbox" name="turnstile" class="w-4 h-4 accent-brand"> Verify you are human
-                    </label>
-                    <span class="text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Cloudflare</span>
-                </div>
+                {{-- Cloudflare Turnstile (FR-A02): real widget when a sitekey is set,
+                     otherwise a dev placeholder. Server-side check is in AuthController. --}}
+                @if (config('services.turnstile.sitekey'))
+                    <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.sitekey') }}" data-theme="light"></div>
+                @else
+                    <div class="flex items-center justify-between rounded-lg border border-slate-300 bg-slate-100/70 px-4 py-3">
+                        <label class="flex items-center gap-3 text-sm text-slate-600 cursor-pointer">
+                            <input type="checkbox" name="turnstile" class="w-4 h-4 accent-brand"> Verify you are human
+                        </label>
+                        <span class="text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Cloudflare</span>
+                    </div>
+                @endif
+                @error('turnstile') <p class="mt-1.5 text-xs text-brand">{{ $message }}</p> @enderror
 
                 <button type="submit"
                     class="w-full rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold py-3 tracking-wide transition shadow-sm">
