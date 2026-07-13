@@ -74,4 +74,27 @@ class User extends Authenticatable
     {
         return $this->role === 'admin';
     }
+
+    /**
+     * IDs of applications this user is explicitly granted (pegawai).
+     * Admins bypass this — callers should check isAdmin() first.
+     *
+     * @return array<int, int>
+     */
+    public function accessibleApplicationIds(): array
+    {
+        return $this->applicationAccess()->pluck('application_id')->all();
+    }
+
+    /**
+     * Whether this user may access the given application.
+     * Admin → always; pegawai → only if an application_access row exists.
+     * For rendering many cards at once, prefer the bulk id-set in the
+     * controller to avoid a query per application.
+     */
+    public function canAccessApp(Application $application): bool
+    {
+        return $this->isAdmin()
+            || $this->applicationAccess()->where('application_id', $application->id)->exists();
+    }
 }
