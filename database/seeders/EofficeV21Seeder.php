@@ -245,8 +245,7 @@ class EofficeV21Seeder extends Seeder
                 ],
                 [
                     'clicked_at' => now()->subHours(2),
-                    'created_at' => now()->subHours(2),
-                    'updated_at' => now()->subHours(2),
+
                 ],
             );
 
@@ -265,8 +264,7 @@ class EofficeV21Seeder extends Seeder
                 [
                     'application_id' => $applicationId,
                     'visited_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
+
                 ],
             );
 
@@ -282,7 +280,7 @@ class EofficeV21Seeder extends Seeder
                     'ip_address' => '127.0.0.1',
                     'user_agent' => 'Seeder',
                     'created_at' => now(),
-                    'updated_at' => now(),
+
                 ],
                 [
                     'user_id' => $userId('3302010000000002'),
@@ -293,7 +291,7 @@ class EofficeV21Seeder extends Seeder
                     'ip_address' => '127.0.0.1',
                     'user_agent' => 'Seeder',
                     'created_at' => now(),
-                    'updated_at' => now(),
+                    
                 ],
             ]);
         });
