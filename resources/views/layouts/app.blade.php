@@ -60,7 +60,7 @@
 
                 <div x-show="open" x-transition x-cloak @click.outside="open = false"
                     class="absolute right-0 mt-2 w-44 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-lg shadow-slate-900/10 py-1 text-sm">
-                    <a href="#" class="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700">
+                    <a href="{{ route('password.edit') }}" class="flex items-center gap-2 px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-700">
                         <span class="material-symbols-outlined" style="font-size:17px">lock</span> Ubah sandi
                     </a>
                     <form method="POST" action="{{ route('logout') }}">
