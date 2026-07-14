@@ -11,6 +11,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        $user->loadMissing('opd');
 
         // RBAC rule: ALL applications are always rendered; access is only a flag.
         $applications = Application::query()
@@ -40,6 +41,19 @@ class DashboardController extends Controller
             ->groupBy('application_id')
             ->pluck('c', 'application_id');
 
+        $userStats = [
+            'accessible_apps' => count($accessible),
+            'restricted_apps' => max($applications->count() - count($accessible), 0),
+            'month_visits' => DB::table('application_visits')
+                ->where('user_id', $user->id)
+                ->where('visit_date', '>=', now()->startOfMonth()->toDateString())
+                ->count(),
+            'year_visits' => DB::table('application_visits')
+                ->where('user_id', $user->id)
+                ->where('visit_date', '>=', now()->startOfYear()->toDateString())
+                ->count(),
+        ];
+
         $apps = $applications->map(fn ($a) => [
             'id' => $a->id,
             'name' => $a->name,
@@ -63,6 +77,7 @@ class DashboardController extends Controller
         return view('dashboard', [
             'apps' => $apps,
             'user' => $user,
+            'userStats' => $userStats,
         ]);
     }
 }
