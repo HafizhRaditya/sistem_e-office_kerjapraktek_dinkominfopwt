@@ -112,6 +112,7 @@ class EofficeV21Seeder extends Seeder
                     'description' => 'Sistem informasi manajemen puskesmas.',
                     'app_group' => 'spbe',
                     'category' => 'kesehatan',
+                    'icon' => 'images/applications/simpus.webp',
                     'is_active' => true,
                     'is_new' => false,
                     'sort_order' => 2,
@@ -176,7 +177,7 @@ class EofficeV21Seeder extends Seeder
                         'opd_id' => $opdId($application['opd_code']),
                         'name' => $application['name'],
                         'description' => $application['description'],
-                        'icon' => null,
+                        'icon' => $application['icon'] ?? null,
                         'app_group' => $application['app_group'],
                         'category' => $application['category'],
                         'is_active' => $application['is_active'],
@@ -291,7 +292,7 @@ class EofficeV21Seeder extends Seeder
                     'ip_address' => '127.0.0.1',
                     'user_agent' => 'Seeder',
                     'created_at' => now(),
-                    
+
                 ],
             ]);
         });

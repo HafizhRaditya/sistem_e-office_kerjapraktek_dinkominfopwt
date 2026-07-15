@@ -210,10 +210,27 @@
                         </div>
 
                         <div class="flex items-center gap-3" :class="a.can_access ? '' : 'opacity-60'">
-                            <div class="w-11 h-11 rounded-lg grid place-items-center text-sm font-bold text-slate-500 dark:text-slate-300"
-                                :class="a.can_access ? 'bg-slate-100 dark:bg-slate-700' : 'bg-slate-200 dark:bg-slate-700/60'">
-                                <span x-show="a.can_access" x-text="initials(a.name)"></span>
-                                <span x-show="!a.can_access" class="material-symbols-outlined">lock</span>
+                            <div class="relative w-11 h-11 shrink-0 overflow-hidden rounded-lg grid place-items-center
+                                        bg-white dark:bg-slate-700 text-sm font-bold text-slate-500">
+
+                                <template x-if="a.icon">
+                                    <img
+                                        :src="a.icon"
+                                        :alt="'Logo ' + a.name"
+                                        class="h-full w-full object-contain p-1"
+                                        :class="a.can_access ? '' : 'grayscale opacity-40'"
+                                    >
+                                </template>
+
+                                <template x-if="!a.icon">
+                                    <span x-text="initials(a.name)"></span>
+                                </template>
+
+                                <template x-if="!a.can_access">
+                                    <span class="absolute inset-0 grid place-items-center bg-slate-900/25">
+                                        <span class="material-symbols-outlined text-white">lock</span>
+                                    </span>
+                                </template>
                             </div>
                             <div>
                                 <h3 class="font-semibold leading-tight flex items-center gap-1.5 flex-wrap">

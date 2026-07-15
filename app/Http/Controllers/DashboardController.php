@@ -58,6 +58,7 @@ class DashboardController extends Controller
             'id' => $a->id,
             'name' => $a->name,
             'slug' => $a->slug,
+            'icon' => $a->icon ? asset($a->icon) : null,
             'opd' => optional($a->opd)->code,
             'group' => $a->app_group,
             'category' => $a->category,
