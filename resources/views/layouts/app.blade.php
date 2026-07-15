@@ -21,7 +21,9 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,300,0,0" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
+
 <body class="font-sans min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100">
 
 @php
@@ -93,5 +95,6 @@
 </footer>
 
 @stack('scripts')
+@livewireScriptConfig
 </body>
 </html>

@@ -32,8 +32,8 @@
 | Tanggal | HNR (Hafizh) | MAU (Umar) | Bersama / Laporan |
 |---|---|---|---|
 | **Sen, 13 Jul** | Setup proyek Laravel, migration `users`, `roles`, `role_user` | Setup frontend (layout utama, navbar, tema warna mengikuti identitas lama) | Seeder data dummy pegawai & aplikasi |
-| **Sel, 14 Jul** | Fitur login (NIP + password), hash password, validasi | Halaman dashboard statis: kartu profil, slot statistik pengguna | — |
-| **Rab, 15 Jul** | Middleware autentikasi, manajemen sesi, logout, ganti password | Komponen grid aplikasi (Wajib & Pilihan) dari data database | — |
+| **Sel, 14 Jul** | Fitur login  (NIP + password), hash password, validasi | Halaman dashboard statis: kartu profil, slot statistik pengguna | — |
+| **Rab, 15 Jul** | Middleware autentikasi, manajemen sesi, logout, ganti password | Komponen grid seluruh aplikasi dari data database dengan penanda Dapat Diakses dan Tidak Dapat Diakses. | — |
 | **Kam, 16 Jul** | Proteksi login: rate limiting + CAPTCHA (Turnstile/alternatif) | Halaman profil pegawai + edit data ringan | — |
 | **Jum, 17 Jul** | Uji alur login end-to-end | Uji tampilan responsif (desktop & mobile) | Demo internal mingguan; **Laporan: Bab 2 (Tinjauan Pustaka/Instansi) selesai draf** |
 

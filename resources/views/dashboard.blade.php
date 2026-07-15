@@ -110,30 +110,11 @@
                 </div>
             </article>
 
-            <div>
-                <div class="flex flex-wrap items-end justify-between gap-2">
-                    <div>
-                        <p class="text-xs font-semibold uppercase text-brand">Ringkasan akun</p>
-                        <h2 class="mt-1 text-lg font-semibold">Statistik aktivitas Anda</h2>
-                    </div>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Diperbarui dari aktivitas portal</p>
-                </div>
+            <livewire:dashboard.user-statistics
+                :initial-stats="$userStats"
+            />
 
-                <div class="mt-4 grid gap-3 sm:grid-cols-2">
-                    @foreach ($statCards as $stat)
-                        <article class="flex min-h-32 items-start gap-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                            <div class="grid h-10 w-10 flex-none place-items-center rounded-lg {{ $stat['icon_class'] }}">
-                                <span class="material-symbols-outlined" aria-hidden="true">{{ $stat['icon'] }}</span>
-                            </div>
-                            <div class="min-w-0">
-                                <p class="text-sm font-medium text-slate-600 dark:text-slate-300">{{ $stat['label'] }}</p>
-                                <p class="mt-1 text-2xl font-bold tabular-nums">{{ number_format($stat['value'], 0, ',', '.') }}</p>
-                                <p class="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{{ $stat['description'] }}</p>
-                            </div>
-                        </article>
-                    @endforeach
-                </div>
-            </div>
+
         </section>
 
         {{-- ======= Aplikasi paling sering diakses ======= --}}
