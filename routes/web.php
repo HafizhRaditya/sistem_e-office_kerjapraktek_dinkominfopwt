@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\PasswordController;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
@@ -25,3 +27,14 @@ Route::middleware('auth')->group(function () {
         ->whereNumber('link')
         ->name('launch');
 });
+
+// ===== Admin panel (HNR module) — auth + role='admin'; pegawai gets 403 =====
+Route::middleware(['auth', EnsureUserIsAdmin::class])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        // Manajemen Hak Akses — application_access per employee
+        Route::get('/akses', [AccessController::class, 'index'])->name('akses.index');
+        Route::get('/akses/{user}', [AccessController::class, 'edit'])->name('akses.edit');
+        Route::put('/akses/{user}', [AccessController::class, 'update'])->name('akses.update');
+    });
