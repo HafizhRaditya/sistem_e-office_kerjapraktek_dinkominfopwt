@@ -129,7 +129,7 @@
                             <span x-show="!a.can_access" class="material-symbols-outlined" style="font-size:13px">lock</span>
                             <span x-text="a.name"></span>
                         </p>
-                        <p class="mt-1 text-[11px] text-slate-400" x-text="fmt(a.month_visits) + ' / bln'"></p>
+                        <p class="mt-1 text-[11px] text-slate-400" x-text="fmt(a.day_visits) + ' kunjungan hari ini | ' +  fmt(a.month_visits) + ' kunjungan bulan ini | ' + fmt(a.year_visits) + ' kunjungan tahun ini' "></p>
                     </div>
                 </template>
             </div>

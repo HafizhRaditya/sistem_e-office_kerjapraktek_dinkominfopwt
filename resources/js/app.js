@@ -53,7 +53,10 @@ Alpine.data('dashboard', (apps) => ({
     get topApps() {
         return [...this.apps]
             .filter((a) => a.active)
-            .sort((x, y) => y.month_visits - x.month_visits)
+            .sort((x, y) =>
+                (y.day_visits - x.day_visits) ||
+                (y.month_visits - x.month_visits)
+            )
             .slice(0, 5);
     },
 
