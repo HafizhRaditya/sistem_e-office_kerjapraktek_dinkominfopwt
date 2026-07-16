@@ -37,6 +37,9 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        // Admin root: the panel's landing page (Manajemen Hak Akses is the core screen)
+        Route::get('/', fn () => redirect()->route('admin.akses.index'))->name('home');
+
         // Manajemen Hak Akses — application_access per employee
         Route::get('/akses', [AccessController::class, 'index'])->name('akses.index');
         Route::get('/akses/{user}', [AccessController::class, 'edit'])->name('akses.edit');

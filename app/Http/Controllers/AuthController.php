@@ -25,7 +25,7 @@ class AuthController extends Controller
     public function showLogin()
     {
         if (Auth::check()) {
-            return redirect()->route('dashboard');
+            return redirect()->to($this->homeFor(Auth::user()));
         }
 
         return view('auth.login');
@@ -92,7 +92,21 @@ class AuthController extends Controller
         $user->update(['last_login_at' => now()]); // FR-A01
         $this->log($request, 'login_success', $user->id, 'Login berhasil.');
 
-        return redirect()->intended(route('dashboard'));
+        // Role-based landing (FR-A01): admin -> admin panel, pegawai -> portal.
+        // intended() still wins, so a deep link the user was bounced from is honoured.
+        return redirect()->intended($this->homeFor($user));
+    }
+
+    /**
+     * Landing page for a user, by role: an admin lands in the admin panel, a
+     * pegawai on the portal dashboard. An admin can still reach the portal via
+     * the "Dashboard" item in the admin sidebar.
+     */
+    private function homeFor(User $user): string
+    {
+        return $user->isAdmin()
+            ? route('admin.akses.index')
+            : route('dashboard');
     }
 
     public function logout(Request $request)
