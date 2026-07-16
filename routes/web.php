@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Admin\AccessController;
+use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaunchController;
@@ -54,4 +56,17 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::get('/aplikasi/{application}/link/{link}/edit', [ApplicationLinkController::class, 'edit'])->name('aplikasi.link.edit');
         Route::put('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'update'])->name('aplikasi.link.update');
         Route::delete('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'destroy'])->name('aplikasi.link.destroy');
+
+        // Manajemen Pengguna — CRUD users (self-protection: no self deactivate/demote/delete)
+        Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
+        Route::get('/pengguna/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('/pengguna', [UserController::class, 'store'])->name('users.store');
+        Route::get('/pengguna/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/pengguna/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/pengguna/{user}/status', [UserController::class, 'status'])->name('users.status');
+        Route::put('/pengguna/{user}/reset-sandi', [UserController::class, 'resetPassword'])->name('users.password');
+        Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+
+        // Log Aktivitas — read-only viewer (FR-A12)
+        Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('logs.index');
     });
