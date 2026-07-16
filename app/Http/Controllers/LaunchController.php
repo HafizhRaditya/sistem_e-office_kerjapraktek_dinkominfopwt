@@ -27,7 +27,17 @@ class LaunchController extends Controller
             abort(403, 'Anda tidak memiliki akses ke aplikasi ini.');
         }
 
-        // 2. Resolve the launch link (must belong to this application). Without an
+        // 2. Availability guard — an inactive application is unavailable to
+        //    EVERYONE, admin included (is_active = availability, not permission).
+        //    Admin toggles this flag from the admin panel; it is not launched.
+        //    No visit is recorded for a rejected launch.
+        if (! $application->is_active) {
+            $this->log($request, 'access_denied', $user->id, $application->id, 'Peluncuran ditolak: aplikasi '.$application->name.' nonaktif.');
+
+            abort(403, 'Aplikasi ini sedang tidak aktif.');
+        }
+
+        // 3. Resolve the launch link (must belong to this application). Without an
         //    explicit link, fall back to the first active link.
         $applicationLink = $link !== null
             ? $application->links()->whereKey($link)->first()
@@ -37,7 +47,16 @@ class LaunchController extends Controller
             abort(404);
         }
 
-        // 3. Record the visit idempotently: 1x per (link + user + day). The DB
+        // 4. Availability guard for the specific link — an explicitly requested
+        //    inactive link is rejected (the fallback above already skips inactive
+        //    links, so this only triggers for an explicit {link} id). No visit.
+        if (! $applicationLink->is_active) {
+            $this->log($request, 'access_denied', $user->id, $application->id, 'Peluncuran ditolak: tautan '.$applicationLink->label.' pada '.$application->name.' nonaktif.');
+
+            abort(403, 'Tautan aplikasi ini sedang tidak aktif.');
+        }
+
+        // 5. Record the visit idempotently: 1x per (link + user + day). The DB
         //    unique index uq_visit_daily is the ultimate guard; firstOrCreate
         //    avoids a duplicate row for repeat clicks the same day.
         ApplicationVisit::firstOrCreate([
@@ -49,11 +68,11 @@ class LaunchController extends Controller
             'visited_at' => now(),
         ]);
 
-        // 4. Audit trail (FR-A12 / FR-D04).
+        // 6. Audit trail (FR-A12 / FR-D04).
         $this->log($request, 'app_launched', $user->id, $application->id,
             'Membuka '.$application->name.' ('.$applicationLink->label.').');
 
-        // 5. Redirect out to the target application (opened in a new tab by the UI).
+        // 7. Redirect out to the target application (opened in a new tab by the UI).
         return redirect()->away($applicationLink->url);
     }
 
