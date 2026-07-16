@@ -25,40 +25,14 @@ class AccessController extends Controller
         'pajak', 'kesehatan', 'data', 'wisata', 'umum',
     ];
 
-    public function index(Request $request)
+    /**
+     * The list itself (live search + OPD filter + pagination) is rendered by the
+     * <livewire:admin.access-table> component, so it filters as you type while
+     * the query stays server-side across the whole dataset.
+     */
+    public function index()
     {
-        $totalApps = Application::count();
-        $opds = Opd::orderBy('name')->get();
-
-        // Search (name or nip_nik) + OPD filter are SERVER-SIDE (query string),
-        // because the list is paginated.
-        $users = User::query()
-            ->with('opd')
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $term = trim((string) $request->input('q'));
-                $query->where(function ($w) use ($term) {
-                    $w->where('name', 'ilike', "%{$term}%")
-                        ->orWhere('nip_nik', 'ilike', "%{$term}%");
-                });
-            })
-            ->when($request->filled('opd'), fn ($query) => $query->where('opd_id', (int) $request->input('opd')))
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
-
-        // One grouped query for the page's users (no N+1).
-        $accessCounts = DB::table('application_access')
-            ->whereIn('user_id', $users->pluck('id'))
-            ->select('user_id', DB::raw('count(*) AS c'))
-            ->groupBy('user_id')
-            ->pluck('c', 'user_id');
-
-        return view('admin.akses.index', [
-            'users' => $users,
-            'opds' => $opds,
-            'totalApps' => $totalApps,
-            'accessCounts' => $accessCounts,
-        ]);
+        return view('admin.akses.index');
     }
 
     public function edit(User $user)

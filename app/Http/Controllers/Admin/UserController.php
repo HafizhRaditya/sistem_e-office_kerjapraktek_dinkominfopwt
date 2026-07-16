@@ -30,27 +30,14 @@ class UserController extends Controller
         'password.regex' => 'Kata sandi harus mengandung huruf dan angka.',
     ];
 
-    public function index(Request $request)
+    /**
+     * The list itself (live search + filters + pagination) is rendered by the
+     * <livewire:admin.user-table> component so searching filters as you type,
+     * while the query stays server-side across the whole dataset.
+     */
+    public function index()
     {
-        $users = User::query()
-            ->with('opd')
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $term = trim((string) $request->input('q'));
-                $query->where(function ($w) use ($term) {
-                    $w->where('name', 'ilike', "%{$term}%")->orWhere('nip_nik', 'ilike', "%{$term}%");
-                });
-            })
-            ->when($request->filled('opd'), fn ($query) => $query->where('opd_id', (int) $request->input('opd')))
-            ->when($request->filled('role'), fn ($query) => $query->where('role', $request->input('role')))
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('admin.pengguna.index', [
-            'users' => $users,
-            'opds' => Opd::orderBy('name')->get(),
-            'roles' => self::ROLES,
-        ]);
+        return view('admin.pengguna.index');
     }
 
     public function create()

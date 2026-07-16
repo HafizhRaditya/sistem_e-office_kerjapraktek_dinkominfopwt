@@ -24,23 +24,14 @@ class ApplicationController extends Controller
         'pajak', 'kesehatan', 'data', 'wisata', 'umum',
     ];
 
-    public function index(Request $request)
+    /**
+     * The list itself (live search + pagination) is rendered by the
+     * <livewire:admin.application-table> component, so it filters as you type
+     * while the query stays server-side across the whole dataset.
+     */
+    public function index()
     {
-        $applications = Application::query()
-            ->with('opd')
-            ->withCount('links')
-            ->when($request->filled('q'), function ($query) use ($request) {
-                $term = trim((string) $request->input('q'));
-                $query->where(function ($w) use ($term) {
-                    $w->where('name', 'ilike', "%{$term}%")->orWhere('slug', 'ilike', "%{$term}%");
-                });
-            })
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->paginate(15)
-            ->withQueryString();
-
-        return view('admin.aplikasi.index', ['applications' => $applications]);
+        return view('admin.aplikasi.index');
     }
 
     public function create()
