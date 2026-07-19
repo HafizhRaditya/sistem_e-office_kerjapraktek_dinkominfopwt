@@ -33,7 +33,8 @@
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <h2 class="text-base font-semibold">Reset Kata Sandi</h2>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menetapkan kata sandi baru untuk pengguna ini. Aktivitas ini dicatat pada log.</p>
-        <form method="POST" action="{{ route('admin.users.password', $user) }}" class="mt-4 grid sm:grid-cols-2 gap-5">
+        <form method="POST" action="{{ route('admin.users.password', $user) }}" class="mt-4 grid sm:grid-cols-2 gap-5"
+            onsubmit="return confirm('Reset kata sandi &quot;{{ $user->name }}&quot;? Sandi lama langsung tidak berlaku dan pengguna harus memakai sandi baru ini.');">
             @csrf
             @method('PUT')
             <div>

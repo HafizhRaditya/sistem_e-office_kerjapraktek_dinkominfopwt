@@ -166,7 +166,13 @@ new class extends Component
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-slate-500">Tidak ada pengguna yang cocok.</td></tr>
+                    <x-admin.empty-row :colspan="6" :filtered="$q !== '' || $opd !== '' || $role !== ''"
+                        title="Belum ada pengguna"
+                        hint="Tambahkan akun pegawai atau administrator untuk mulai mengatur hak akses.">
+                        <a href="{{ route('admin.users.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-4 py-2 transition">
+                            <span class="material-symbols-outlined" style="font-size:18px">person_add</span> Tambah Pengguna
+                        </a>
+                    </x-admin.empty-row>
                 @endforelse
             </tbody>
         </table>

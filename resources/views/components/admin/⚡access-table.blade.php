@@ -148,7 +148,9 @@ new class extends Component
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-slate-500">Tidak ada pengguna yang cocok dengan pencarian.</td></tr>
+                    <x-admin.empty-row :colspan="5" :filtered="$q !== '' || $opd !== ''"
+                        title="Belum ada pengguna"
+                        hint="Hak akses diatur per pegawai, jadi daftar ini terisi setelah ada akun pegawai." />
                 @endforelse
             </tbody>
         </table>

@@ -90,7 +90,11 @@
                         <td class="px-5 py-3 text-xs text-slate-400 font-mono">{{ $log->ip_address ?? '—' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="5" class="px-5 py-10 text-center text-sm text-slate-500">Tidak ada aktivitas yang cocok dengan filter.</td></tr>
+                    <x-admin.empty-row :colspan="5"
+                        :filtered="request()->filled('user') || request()->filled('type') || request()->filled('from') || request()->filled('to')"
+                        title="Belum ada aktivitas tercatat"
+                        hint="Log terisi otomatis saat pengguna login, membuka aplikasi, atau ditolak aksesnya."
+                        filtered-hint="Coba ubah rentang tanggal atau jenis aktivitas, lalu tekan Terapkan." />
                 @endforelse
             </tbody>
         </table>

@@ -108,7 +108,13 @@ new class extends Component
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="6" class="px-5 py-10 text-center text-sm text-slate-500">Tidak ada aplikasi yang cocok.</td></tr>
+                    <x-admin.empty-row :colspan="6" :filtered="$q !== ''"
+                        title="Belum ada aplikasi"
+                        hint="Aplikasi yang ditambahkan di sini akan muncul di dashboard pegawai yang diberi hak akses.">
+                        <a href="{{ route('admin.aplikasi.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-4 py-2 transition">
+                            <span class="material-symbols-outlined" style="font-size:18px">add</span> Tambah Aplikasi
+                        </a>
+                    </x-admin.empty-row>
                 @endforelse
             </tbody>
         </table>
