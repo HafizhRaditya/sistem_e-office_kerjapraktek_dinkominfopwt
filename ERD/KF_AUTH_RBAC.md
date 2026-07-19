@@ -35,7 +35,8 @@ Catatan: satu user boleh multi-role (`role_user`), mis. pegawai DINKES yang juga
 
 ### FR-A01 — Login NIP/NIK
 - **Aktor:** semua role. **Prasyarat:** akun aktif (`is_active = true`).
-- **Alur:** buka `/login` → isi username (dicocokkan ke `users.nip` ATAU `users.nik`) + kata sandi → lolos Turnstile → sesi dibuat → `last_login_at` diperbarui → catat `activity_logs (login_success)` → arahkan ke dashboard.
+- **Alur:** buka `/login` → isi username (dicocokkan ke kolom tunggal `users.nip_nik`) + kata sandi → lolos Turnstile → sesi dibuat → `last_login_at` diperbarui → catat `activity_logs (login_success)` → **arahkan sesuai peran**.
+- **Arahan setelah login (per peran):** `admin` → panel administrator (`/admin`, mendarat di Manajemen Hak Akses); `pegawai` → dashboard portal (`/dashboard`). Jika sebelumnya pengguna dipentalkan dari suatu URL terlindungi, URL itu yang dipulihkan (`intended`), mengalahkan arahan bawaan peran. Admin tetap dapat membuka dashboard portal lewat menu **Dashboard** di sidebar admin.
 - **Alternatif:** kredensial salah → pesan "NIP/NIK atau kata sandi salah." per form, catat `login_failed`; akun nonaktif → "Akun Anda dinonaktifkan. Hubungi admin OPD."
 - **Kriteria terima:** login berhasil ≤ 3 detik; user nonaktif tidak pernah bisa masuk; percobaan gagal tercatat.
 
