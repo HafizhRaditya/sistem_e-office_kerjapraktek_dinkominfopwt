@@ -211,7 +211,7 @@
 
                         <div class="flex items-center gap-3" :class="a.can_access ? '' : 'opacity-60'">
                             <div class="relative w-11 h-11 shrink-0 overflow-hidden rounded-lg grid place-items-center
-                                        bg-white dark:bg-slate-700 text-sm font-bold text-slate-500">
+                                        bg-red-50 text-lg font-bold text-brand dark:bg-red-950/50 dark:text-red-200">
 
                                 <template x-if="a.icon">
                                     <img
