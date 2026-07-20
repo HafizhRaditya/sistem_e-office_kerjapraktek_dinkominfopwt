@@ -147,9 +147,33 @@ karena menggunakan `CHECK` constraint dan expression index PostgreSQL.
 1. Buat dua database kosong pada server PostgreSQL:
    - `sistem_eoffice` untuk development.
    - `sistem_eoffice_test` untuk automated test.
+
+   Test sengaja memakai database **terpisah** dari development supaya menjalankan
+   `php artisan test` tidak pernah mengubah data kerja Anda. Nama database test
+   ditetapkan di `phpunit.xml` (`DB_DATABASE=sistem_eoffice_test`), bukan di `.env`.
+
 2. Pastikan keduanya dimiliki oleh atau dapat dikelola penuh oleh user yang akan
    diisi pada `DB_USERNAME`. Pembuatan database dilakukan lewat akun administrator
    PostgreSQL; migration tetap menjadi satu-satunya pembentuk tabel aplikasi.
+
+   Dijalankan **sekali per mesin** sebagai superuser `postgres` — ganti `<user>`
+   dengan nilai `DB_USERNAME` Anda (mis. `eoffice`):
+
+   ```sql
+   ALTER ROLE <user> CREATEDB;
+   CREATE DATABASE sistem_eoffice_test OWNER <user>;
+   ```
+
+   Contoh pemanggilan dari terminal Windows:
+
+   ```bash
+   psql -U postgres -c "ALTER ROLE eoffice CREATEDB;"
+   psql -U postgres -c "CREATE DATABASE sistem_eoffice_test OWNER eoffice;"
+   ```
+
+   Lewati langkah ini dan seluruh test akan gagal dengan pesan yang sama:
+   `SQLSTATE[08006] ... database "sistem_eoffice_test" does not exist`. Itu tanda
+   database test belum dibuat, **bukan** kode yang rusak.
 3. Salin `.env.example` menjadi `.env`, lalu isi kredensial PostgreSQL lokal.
 4. Jalankan setup pada database development yang masih kosong:
 
@@ -165,6 +189,12 @@ Automated test selalu memakai `sistem_eoffice_test` melalui `phpunit.xml`:
 ```bash
 php artisan test
 ```
+
+Database test **cukup dibuat kosong** — isinya tidak perlu disiapkan manual.
+`tests/TestCase.php` memakai `RefreshDatabase` dengan `$seed = true`, sehingga tiap
+kali `php artisan test` dijalankan, seluruh migration dijalankan ulang dari nol lalu
+seeder diisikan ke database test. Konsekuensinya: isi `sistem_eoffice_test` selalu
+ditimpa saat test berjalan, jadi jangan menyimpan apa pun yang berharga di sana.
 
 `tests/TestCase.php` memiliki safety guard: `migrate:fresh` hanya boleh berjalan
 pada koneksi PostgreSQL dengan nama database berakhiran `_test`. Jangan mengubah
