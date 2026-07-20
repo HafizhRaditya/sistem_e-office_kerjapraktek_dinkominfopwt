@@ -65,6 +65,11 @@ class User extends Authenticatable
         return $this->hasMany(QuestionnaireResponse::class);
     }
 
+    public function banners(): HasMany
+    {
+        return $this->hasMany(Banner::class, 'created_by');
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(ActivityLog::class);

@@ -3,22 +3,122 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div x-data="dashboard(@js($apps))">
+<div x-data="dashboard(@js($apps), @js($heroSlides ?? []), @js($popupSlides ?? []))">
 
     {{-- ======= Hero (red brand surface) ======= --}}
-    <section class="bg-gradient-to-br from-branddark via-brand to-branddark text-white">
-        <div class="max-w-7xl mx-auto px-6 pt-14 pb-16 text-center">
+    <section class="relative overflow-hidden bg-gradient-to-br from-branddark via-brand to-branddark text-white"
+        @mouseenter="heroPaused = true" @mouseleave="heroPaused = false"
+        @touchstart.passive="touchStart('hero', $event)" @touchend.passive="touchEnd('hero', $event)">
+        <template x-for="(slide, index) in heroSlides" :key="'hero-' + slide.id">
+            <div x-show="heroIndex === index" x-transition.opacity class="absolute inset-0">
+                <template x-if="slide.image">
+                    <img :src="slide.image" :alt="slide.title" class="h-full w-full object-cover">
+                </template>
+                <div class="absolute inset-0 bg-gradient-to-br from-branddark/95 via-brand/85 to-branddark/90"></div>
+            </div>
+        </template>
+        <div class="relative max-w-7xl mx-auto px-6 pt-14 pb-16 text-center">
             <p class="text-[11px] font-semibold tracking-[0.2em] uppercase text-red-200">Sistem Pemerintahan Berbasis Elektronik</p>
             <h1 class="mt-3 text-3xl sm:text-4xl font-bold tracking-tight">E-Office Kabupaten Banyumas</h1>
             <p class="mt-4 max-w-2xl mx-auto text-red-50/90 text-sm sm:text-base leading-relaxed">
                 Portal aplikasi terintegrasi bagi user OPD — seluruh aplikasi ditampilkan;
                 aplikasi di luar hak akses Anda ditandai dan tidak dapat dibuka.
             </p>
+            <template x-if="heroSlides.length > 0">
+                <div class="mt-4 min-h-[3.5rem] max-w-2xl mx-auto">
+                    <p class="text-lg sm:text-xl font-semibold" x-text="heroSlides[heroIndex].title"></p>
+                    <p class="mt-1 text-red-50/90 text-sm sm:text-base leading-relaxed"
+                        x-text="heroSlides[heroIndex].description || 'Informasi terbaru dari Portal E-Office Kabupaten Banyumas.'"></p>
+                </div>
+            </template>
             <a href="#apps" class="mt-7 inline-flex items-center gap-2 rounded-lg bg-white text-brand hover:bg-red-50 px-6 py-3 text-sm font-semibold transition shadow-sm">
                 Mulai eksplorasi aplikasi <span class="material-symbols-outlined" style="font-size:18px">arrow_forward</span>
             </a>
         </div>
+        <template x-if="heroSlides.length > 1">
+            <div class="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+                <template x-for="(slide, index) in heroSlides" :key="'hero-dot-' + slide.id">
+                    <button type="button" @click="heroIndex = index" :aria-label="'Tampilkan banner ' + (index + 1)"
+                        class="h-2 rounded-full transition-all" :class="heroIndex === index ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'"></button>
+                </template>
+            </div>
+        </template>
     </section>
+
+    {{-- ======= Popup banner dan kuisioner (pegawai aktif) ======= --}}
+    <div x-show="popupOpen && popupSlides.length > 0" x-cloak x-transition.opacity
+        class="fixed inset-0 z-50 grid place-items-center bg-slate-950/65 p-4 sm:p-6"
+        role="dialog" aria-modal="true" aria-label="Informasi dan kuisioner"
+        @keydown.escape.window="closePopup()">
+        <div class="relative w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800"
+            @click.outside="closePopup()"
+            @focusin="popupPaused = true" @focusout="popupPaused = false"
+            @touchstart.passive="touchStart('popup', $event)" @touchend.passive="touchEnd('popup', $event)">
+            <button type="button" @click="closePopup()" aria-label="Tutup popup"
+                class="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-slate-950/45 text-white transition hover:bg-slate-950/70 focus:outline-none focus:ring-2 focus:ring-white">
+                <span class="material-symbols-outlined" style="font-size:20px">close</span>
+            </button>
+
+            <template x-if="currentPopupSlide">
+                <article>
+                    <div class="relative aspect-[16/7] bg-gradient-to-br from-branddark via-brand to-branddark">
+                        <template x-if="currentPopupSlide.image">
+                            <img :src="currentPopupSlide.image" :alt="currentPopupSlide.title" class="h-full w-full object-cover">
+                        </template>
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/25 to-transparent"></div>
+                        <div class="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+                            <span class="text-[10px] font-semibold uppercase tracking-[0.2em] text-red-200"
+                                x-text="currentPopupSlide.type === 'questionnaire' ? 'Kuisioner' : 'Informasi'"></span>
+                            <h2 class="mt-1 text-xl font-bold sm:text-2xl" x-text="currentPopupSlide.title"></h2>
+                        </div>
+                    </div>
+
+                    <div class="flex min-h-[14rem] flex-col p-5 sm:p-7">
+                        <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+                            x-text="currentPopupSlide.description || (currentPopupSlide.type === 'questionnaire' ? 'Bantu kami meningkatkan layanan E-Office dengan mengisi kuisioner ini.' : '')"></p>
+
+                        <div class="mt-auto flex flex-wrap items-center justify-between gap-3 pt-5">
+                            <div class="flex items-center gap-1.5" aria-label="Posisi slide">
+                                <template x-for="(item, dotIndex) in popupSlides" :key="'popup-dot-' + item.type + '-' + item.id">
+                                    <button type="button" @click="selectSlide(dotIndex)" :aria-label="'Tampilkan slide ' + (dotIndex + 1)"
+                                        class="h-2 rounded-full transition-all" :class="popupIndex === dotIndex ? 'w-6 bg-brand' : 'w-2 bg-slate-300 hover:bg-slate-400 dark:bg-slate-600 dark:hover:bg-slate-500'"></button>
+                                </template>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <button type="button" x-show="popupSlides.length > 1" @click="moveSlide('popup', -1)"
+                                    class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand hover:text-brand dark:border-slate-600 dark:text-slate-300"
+                                    aria-label="Slide sebelumnya">
+                                    <span class="material-symbols-outlined" style="font-size:18px">chevron_left</span>
+                                </button>
+                                <button type="button" x-show="popupSlides.length > 1" @click="moveSlide('popup', 1)"
+                                    class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand hover:text-brand dark:border-slate-600 dark:text-slate-300"
+                                    aria-label="Slide berikutnya">
+                                    <span class="material-symbols-outlined" style="font-size:18px">chevron_right</span>
+                                </button>
+
+                                <template x-if="currentPopupSlide.type === 'questionnaire'">
+                                    <form method="POST" :action="currentPopupSlide.click_url">
+                                        @csrf
+                                        <button type="submit" class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-branddark focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                            Isi Kuisioner
+                                            <span class="material-symbols-outlined" style="font-size:18px">open_in_new</span>
+                                        </button>
+                                    </form>
+                                </template>
+                                <template x-if="currentPopupSlide.type === 'banner' && currentPopupSlide.target_url">
+                                    <a :href="currentPopupSlide.target_url" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-branddark focus:outline-none focus:ring-2 focus:ring-brand/30">
+                                        Buka informasi
+                                        <span class="material-symbols-outlined" style="font-size:18px">open_in_new</span>
+                                    </a>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </template>
+        </div>
+    </div>
 
     <div class="max-w-7xl mx-auto px-6 pb-20">
 
