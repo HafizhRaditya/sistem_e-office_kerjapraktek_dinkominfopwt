@@ -16,7 +16,7 @@
 
     <div>
         <label for="opd_id" class="block text-sm font-medium mb-1.5">OPD pemilik</label>
-        <select id="opd_id" name="opd_id" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+        <select id="opd_id" name="opd_id" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">— pilih OPD —</option>
             @foreach ($opds as $opd)
                 <option value="{{ $opd->id }}" @selected((string) old('opd_id', $app?->opd_id) === (string) $opd->id)>{{ $opd->name }}</option>
@@ -35,7 +35,7 @@
 
     <div>
         <label for="app_group" class="block text-sm font-medium mb-1.5">Grup aplikasi</label>
-        <select id="app_group" name="app_group" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+        <select id="app_group" name="app_group" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">— pilih grup —</option>
             @foreach ($appGroups as $g)
                 <option value="{{ $g }}" @selected(old('app_group', $app?->app_group) === $g)>{{ ['smartcity' => 'Smart City', 'spbe' => 'SPBE', 'tools' => 'Tools'][$g] }}</option>
@@ -46,7 +46,7 @@
 
     <div>
         <label for="category" class="block text-sm font-medium mb-1.5">Kategori <span class="text-slate-400 font-normal">(opsional)</span></label>
-        <select id="category" name="category" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm capitalize focus:outline-none focus:border-brand">
+        <select id="category" name="category" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm capitalize focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">— tanpa kategori —</option>
             @foreach ($categories as $c)
                 <option value="{{ $c }}" @selected(old('category', $app?->category) === $c)>{{ ucfirst($c) }}</option>

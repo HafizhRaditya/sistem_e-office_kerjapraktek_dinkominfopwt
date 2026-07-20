@@ -81,7 +81,7 @@ new class extends Component
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-9 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
             <span wire:loading wire:target="q" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">…</span>
         </div>
-        <select wire:model.live="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+        <select wire:model.live="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">Semua OPD</option>
             @foreach ($opds as $o)
                 <option value="{{ $o->id }}">{{ $o->name }}</option>

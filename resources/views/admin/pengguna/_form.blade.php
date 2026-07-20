@@ -35,7 +35,7 @@
 
     <div>
         <label for="opd_id" class="block text-sm font-medium mb-1.5">OPD</label>
-        <select id="opd_id" name="opd_id" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+        <select id="opd_id" name="opd_id" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">— pilih OPD —</option>
             @foreach ($opds as $opd)
                 <option value="{{ $opd->id }}" @selected((string) old('opd_id', $u?->opd_id) === (string) $opd->id)>{{ $opd->name }}</option>
@@ -47,7 +47,7 @@
     <div>
         <label for="role" class="block text-sm font-medium mb-1.5">Peran</label>
         <select id="role" name="role" @disabled($self)
-            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand disabled:opacity-50 disabled:cursor-not-allowed">
+            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 disabled:opacity-50 disabled:cursor-not-allowed">
             @foreach ($roles as $r)
                 <option value="{{ $r }}" @selected(old('role', $u?->role) === $r)>{{ $roleLabels[$r] ?? $r }}</option>
             @endforeach
