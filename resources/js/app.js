@@ -11,8 +11,10 @@ window.Alpine = Alpine;
  * component only filters and counts (no access logic is decided here — each
  * app already arrives with a server-computed `can_access` flag).
  */
-Alpine.data('dashboard', (apps) => ({
+Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = []) => ({
     apps,
+    heroSlides,
+    popupSlides,
     tab: 'all',
     status: 'all',
     access: 'all',
@@ -22,6 +24,87 @@ Alpine.data('dashboard', (apps) => ({
     toastMsg: '',
     toastShow: false,
     _toastTimer: null,
+    heroIndex: 0,
+    popupIndex: 0,
+    popupOpen: popupSlides.length > 0,
+    heroPaused: false,
+    popupPaused: false,
+    heroTouchX: null,
+    popupTouchX: null,
+    _heroTimer: null,
+    _popupTimer: null,
+
+    init() {
+        this.startCarousel('hero');
+        this.startCarousel('popup');
+    },
+
+    startCarousel(type) {
+        const slides = type === 'hero' ? this.heroSlides : this.popupSlides;
+        if (slides.length < 2) {
+            return;
+        }
+
+        const timerKey = type === 'hero' ? '_heroTimer' : '_popupTimer';
+        const indexKey = type === 'hero' ? 'heroIndex' : 'popupIndex';
+        const pausedKey = type === 'hero' ? 'heroPaused' : 'popupPaused';
+
+        this[timerKey] = setInterval(() => {
+            if (!this[pausedKey] && (type !== 'popup' || this.popupOpen)) {
+                this[indexKey] = (this[indexKey] + 1) % slides.length;
+            }
+        }, 5000);
+    },
+
+    moveSlide(type, direction) {
+        const slides = type === 'hero' ? this.heroSlides : this.popupSlides;
+        const indexKey = type === 'hero' ? 'heroIndex' : 'popupIndex';
+        if (slides.length < 2) {
+            return;
+        }
+
+        this[indexKey] = (this[indexKey] + direction + slides.length) % slides.length;
+        this.restartCarousel(type);
+    },
+
+    selectSlide(index) {
+        if (index < 0 || index >= this.popupSlides.length) {
+            return;
+        }
+
+        this.popupIndex = index;
+        this.restartCarousel('popup');
+    },
+
+    restartCarousel(type) {
+        const timerKey = type === 'hero' ? '_heroTimer' : '_popupTimer';
+        if (this[timerKey]) {
+            clearInterval(this[timerKey]);
+        }
+        this.startCarousel(type);
+    },
+
+    touchStart(type, event) {
+        this[type === 'hero' ? 'heroTouchX' : 'popupTouchX'] = event.changedTouches[0].clientX;
+    },
+
+    touchEnd(type, event) {
+        const key = type === 'hero' ? 'heroTouchX' : 'popupTouchX';
+        const startX = this[key];
+        this[key] = null;
+        if (startX === null) {
+            return;
+        }
+
+        const distance = event.changedTouches[0].clientX - startX;
+        if (Math.abs(distance) >= 40) {
+            this.moveSlide(type, distance < 0 ? 1 : -1);
+        }
+    },
+
+    closePopup() {
+        this.popupOpen = false;
+    },
 
     fmt(n) {
         return Number(n).toLocaleString('id-ID');
@@ -58,6 +141,10 @@ Alpine.data('dashboard', (apps) => ({
                 (y.month_visits - x.month_visits)
             )
             .slice(0, 5);
+    },
+
+    get currentPopupSlide() {
+        return this.popupSlides[this.popupIndex] || null;
     },
 
     countGroup(g) {

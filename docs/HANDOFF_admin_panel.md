@@ -116,7 +116,7 @@ c9a8a95  Menambahkan/setup icon aplikasi   (MAU)
 5. **Penjaga akun-sendiri:** admin tidak bisa menonaktifkan, **menurunkan peran**, maupun menghapus akunnya sendiri. Guard *demote* adalah tambahan (menurunkan diri = mengunci diri dari panel).
 6. **Penjaga `questionnaires.created_by` (ON DELETE RESTRICT):** menghapus pembuat kuisioner ditolak dengan pesan ramah, bukan error 500.
 7. **Validasi di lapis aplikasi** menjadi penjaga depan constraint DB (pesan Indonesia), DB tetap sebagai backstop.
-8. **Test memakai PostgreSQL dev, bukan sqlite.** Migration kita PostgreSQL-only (`ALTER TABLE ADD CONSTRAINT`, index `COALESCE`), sehingga sqlite `:memory:` bawaan phpunit tidak bisa memigrasinya. Semua feature test meng-override koneksi ke `pgsql` di `setUp()` dan **tidak** memakai `RefreshDatabase`; data uji diberi prefix (`uji-`, `UJI`) lalu dibersihkan di `tearDown()`.
+8. **Test memakai database PostgreSQL terpisah.** Migration kita PostgreSQL-only (`ALTER TABLE ADD CONSTRAINT`, index `COALESCE`), sehingga SQLite `:memory:` tidak dapat dipakai. `phpunit.xml` menunjuk ke `sistem_eoffice_test`; `tests/TestCase.php` memakai `RefreshDatabase` + seeder + transaksi dan menolak database yang namanya tidak berakhiran `_test`.
 
 ---
 
@@ -129,7 +129,7 @@ c9a8a95  Menambahkan/setup icon aplikasi   (MAU)
 5. **Ikon aplikasi:** hanya `simpus` yang punya ikon. Berkas `public/images/applications/e-planing.webp` (typo, satu `n`) tidak terpakai karena `applications.e-planning.icon = NULL`. **Ranah MAU** — kabari dia, jangan diperbaiki sepihak.
 6. **Rate limit login mengembalikan 302, bukan 429.** Blokir + pesan Indonesia berfungsi, tapi FR-A02 menulis "respons 429". Untuk form web, redirect-back adalah perilaku Laravel yang wajar; putuskan apakah dokumen atau kode yang disesuaikan.
 7. **Turnstile aktif** (kunci asli ada di `.env`, tidak masuk Git). Akibatnya login **tidak bisa** diuji lewat curl. Untuk test, endpoint verifikasi Cloudflare di-*fake* (`Http::fake`) — lihat `LoginRedirectTest`.
-8. **Data dev bisa termutasi oleh test** (hak akses, log, kunjungan). Reset dengan `php artisan migrate:fresh --seed`.
+8. **Database test wajib dibuat terlebih dahulu.** Buat `sistem_eoffice_test` lewat akun administrator PostgreSQL dan berikan ownership/hak penuh kepada user pada `.env`. Test tidak lagi boleh menyentuh database development.
 
 ---
 
@@ -155,10 +155,7 @@ npm run build
 # server
 php artisan serve --host=127.0.0.1 --port=8000
 
-# reset data dev bila perlu
-php artisan migrate:fresh --seed
-
-# seluruh test (47 test, butuh PostgreSQL dev hidup + sudah di-seed)
+# seluruh test (memakai sistem_eoffice_test, bukan database development)
 php artisan test
 ```
 

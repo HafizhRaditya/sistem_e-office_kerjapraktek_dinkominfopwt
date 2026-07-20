@@ -4,29 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
  * Admin panel access control + Manajemen Hak Akses (LANGKAH 2).
  *
- * Runs against the seeded dev PostgreSQL database (domain migrations are
- * PostgreSQL-only). actingAs() bypasses the /login flow + Turnstile, which is
- * correct: admin routes are guarded by auth + role, not by Turnstile.
+ * Runs against the isolated, migrated, and seeded PostgreSQL test database.
+ * actingAs() bypasses the /login flow + Turnstile, which is correct: admin
+ * routes are guarded by auth + role, not by Turnstile.
  */
 class AdminAccessControlTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
-    }
-
     private function user(string $nip): User
     {
         return User::where('nip_nik', $nip)->firstOrFail();

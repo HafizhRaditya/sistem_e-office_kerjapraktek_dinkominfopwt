@@ -4,11 +4,13 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
+use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\PasswordController;
+use App\Http\Controllers\QuestionnaireController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\Route;
 
@@ -20,6 +22,8 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::post('/kuisioner/{questionnaire}/klik', [QuestionnaireController::class, 'click'])
+        ->name('questionnaire.click');
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // Change password (FR-A06)
@@ -72,4 +76,5 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
 
         // Log Aktivitas — read-only viewer (FR-A12)
         Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('logs.index');
+        Route::get('/kuisioner/statistik', [AdminQuestionnaireController::class, 'statistics'])->name('questionnaires.statistics');
     });

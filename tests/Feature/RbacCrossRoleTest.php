@@ -15,11 +15,9 @@ use Tests\TestCase;
  * Cross-role RBAC verification (roadmap Fri 25 Jul): admin vs two pegawai from
  * different OPDs, plus live propagation of an access change.
  *
- * Runs against the seeded dev PostgreSQL database (the domain migrations are
- * PostgreSQL-only). Instead of borrowing the seeded employees — whose grants are
- * mutated by other suites — this test builds its own `UJI` fixtures so the
- * expected access set is deterministic, and removes them in tearDown() together
- * with the visits and activity logs they produce.
+ * Runs inside a transaction on the isolated, migrated, and seeded PostgreSQL
+ * test database. Instead of borrowing seeded employees, this suite builds its
+ * own `UJI` fixtures so the expected access set is deterministic.
  *
  * Applications are the real seeded rows (no invented names), per the team rule
  * that test data must come from the database.
@@ -41,12 +39,6 @@ class RbacCrossRoleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
 
         Http::fake([
             'challenges.cloudflare.com/*' => Http::response(['success' => true], 200),

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\Banner;
+use App\Models\Questionnaire;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -12,6 +14,66 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $user->loadMissing('opd');
+
+        $now = now();
+        $withinPeriod = static function ($query) use ($now): void {
+            $query
+                ->where(function ($period) use ($now): void {
+                    $period->whereNull('starts_at')->orWhere('starts_at', '<=', $now);
+                })
+                ->where(function ($period) use ($now): void {
+                    $period->whereNull('ends_at')->orWhere('ends_at', '>=', $now);
+                });
+        };
+
+        $bannerSlides = Banner::query()
+            ->where('is_active', true)
+            ->where($withinPeriod)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (Banner $banner): array => [
+                'id' => $banner->id,
+                'type' => 'banner',
+                'title' => $banner->title,
+                'description' => $banner->description,
+                'image' => $this->assetUrl($banner->image_path),
+                'target_url' => $banner->target_url,
+                'click_url' => null,
+                'sort_order' => $banner->sort_order,
+            ]);
+
+        $questionnaireSlides = collect();
+        $popupSlides = collect();
+        if ($user->is_active && $user->role === 'pegawai') {
+            $questionnaireSlides = Questionnaire::query()
+                ->where('is_active', true)
+                ->where($withinPeriod)
+                ->whereDoesntHave('responses', fn ($query) => $query->where('user_id', $user->id))
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (Questionnaire $questionnaire): array => [
+                    'id' => $questionnaire->id,
+                    'type' => 'questionnaire',
+                    'title' => $questionnaire->title,
+                    'description' => $questionnaire->description,
+                    'image' => $this->assetUrl($questionnaire->banner_image),
+                    'target_url' => null,
+                    'click_url' => route('questionnaire.click', $questionnaire),
+                    'sort_order' => $questionnaire->sort_order,
+                ]);
+
+            $popupSlides = $bannerSlides
+                ->concat($questionnaireSlides)
+                ->sortBy(fn (array $slide): string => sprintf(
+                    '%010d-%d-%010d',
+                    $slide['sort_order'],
+                    $slide['type'] === 'banner' ? 0 : 1,
+                    $slide['id'],
+                ))
+                ->values();
+        }
 
         // RBAC rule: ALL applications are always rendered; access is only a flag.
         $applications = Application::query()
@@ -86,6 +148,19 @@ class DashboardController extends Controller
             'apps' => $apps,
             'user' => $user,
             'userStats' => $userStats,
+            'heroSlides' => $bannerSlides->values(),
+            'popupSlides' => $popupSlides,
         ]);
+    }
+
+    private function assetUrl(?string $path): ?string
+    {
+        if (blank($path)) {
+            return null;
+        }
+
+        return preg_match('/^https?:\/\//i', $path) === 1
+            ? $path
+            : asset(ltrim($path, '/'));
     }
 }

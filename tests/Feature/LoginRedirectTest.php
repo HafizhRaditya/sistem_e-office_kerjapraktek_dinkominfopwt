@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -20,12 +19,6 @@ class LoginRedirectTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
 
         Http::fake([
             'challenges.cloudflare.com/*' => Http::response(['success' => true], 200),

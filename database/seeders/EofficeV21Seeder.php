@@ -230,6 +230,7 @@ class EofficeV21Seeder extends Seeder
                     'is_active' => true,
                     'starts_at' => now()->subDay(),
                     'ends_at' => now()->addDays(30),
+                    'sort_order' => 10,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ],
@@ -247,6 +248,22 @@ class EofficeV21Seeder extends Seeder
                 [
                     'clicked_at' => now()->subHours(2),
 
+                ],
+            );
+
+            DB::table('banners')->updateOrInsert(
+                ['title' => 'Selamat Datang di Portal E-Office'],
+                [
+                    'created_by' => $userId('ADMIN001'),
+                    'description' => 'Informasi portal dan layanan digital Kabupaten Banyumas.',
+                    'image_path' => null,
+                    'target_url' => null,
+                    'is_active' => true,
+                    'starts_at' => now()->subDay(),
+                    'ends_at' => now()->addDays(30),
+                    'sort_order' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ],
             );
 

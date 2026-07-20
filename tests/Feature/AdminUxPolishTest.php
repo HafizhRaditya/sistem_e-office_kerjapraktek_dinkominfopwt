@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\User;
 use Illuminate\Support\Facades\Blade;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
 use Tests\TestCase;
@@ -20,17 +19,6 @@ use Tests\TestCase;
  */
 class AdminUxPolishTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
-    }
-
     private function admin(): User
     {
         return User::where('nip_nik', 'ADMIN001')->firstOrFail();

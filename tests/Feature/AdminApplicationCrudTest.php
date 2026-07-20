@@ -11,23 +11,11 @@ use Tests\TestCase;
 /**
  * Admin — Manajemen Aplikasi & Tautan (LANGKAH 3).
  *
- * Runs against the seeded dev PostgreSQL database (domain migrations are
- * PostgreSQL-only). Test-created rows use an "uji-" slug prefix and are removed
- * in tearDown so the seeded data stays intact.
+ * Runs inside a transaction on the isolated, migrated, and seeded PostgreSQL
+ * test database. Test-created rows use an "uji-" slug prefix for clarity.
  */
 class AdminApplicationCrudTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
-    }
-
     protected function tearDown(): void
     {
         // Cascades to links/access/visits of the test applications.

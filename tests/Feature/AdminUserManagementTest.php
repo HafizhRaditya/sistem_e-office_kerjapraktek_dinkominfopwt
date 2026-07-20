@@ -12,22 +12,11 @@ use Tests\TestCase;
 /**
  * Admin — Manajemen Pengguna (LANGKAH 4).
  *
- * Runs against the seeded dev PostgreSQL database. Test-created accounts use a
- * "UJI" nip_nik prefix and are removed in tearDown so seeded data stays intact.
+ * Runs inside a transaction on the isolated, migrated, and seeded PostgreSQL
+ * test database. Test-created accounts use a "UJI" nip_nik prefix for clarity.
  */
 class AdminUserManagementTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
-    }
-
     protected function tearDown(): void
     {
         User::where('nip_nik', 'like', 'UJI%')->delete();

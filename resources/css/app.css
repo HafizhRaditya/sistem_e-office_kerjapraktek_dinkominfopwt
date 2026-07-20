@@ -30,3 +30,41 @@
 [x-cloak] {
     display: none !important;
 }
+
+/* Keep numeric ordering fields usable without the browser's native spinner. */
+input[type='number'] {
+    appearance: textfield;
+    -moz-appearance: textfield;
+}
+
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+    margin: 0;
+    -webkit-appearance: none;
+}
+
+/* Keep page scrolling available without the bulky native arrow buttons. */
+html {
+    scrollbar-color: #475569 transparent;
+    scrollbar-width: thin;
+}
+
+html::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+html::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+html::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background: #475569;
+}
+
+html::-webkit-scrollbar-button {
+    display: none;
+    height: 0;
+    width: 0;
+}
