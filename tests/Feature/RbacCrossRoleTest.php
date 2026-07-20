@@ -277,4 +277,55 @@ class RbacCrossRoleTest extends TestCase
         $this->get('/launch/simpus')->assertStatus(403);
         $this->assertAuthenticatedAs($this->pegawaiA);
     }
+
+    // ---------------------------------------------------------------- skenario 5
+
+    /**
+     * The two halves of the existing decision, stated together: an admin bypasses
+     * *permission* (no application_access row is needed) but NOT *availability*
+     * (is_active). Documented as decision #1 in the handoff — asserted here, not
+     * changed.
+     */
+    public function test_admin_launches_an_active_application_without_any_access_row(): void
+    {
+        $this->assertEmpty($this->admin->accessibleApplicationIds(),
+            'admin sengaja tidak punya baris application_access — aksesnya lewat bypass peran');
+
+        $link = $this->smartCity->links()->where('is_active', true)->orderBy('sort_order')->firstOrFail();
+
+        // Make the idempotent insert actually insert, so the visit is observable.
+        ApplicationVisit::where('application_link_id', $link->id)
+            ->where('user_id', $this->admin->id)
+            ->where('visit_date', now()->toDateString())
+            ->delete();
+
+        $before = ApplicationVisit::count();
+
+        $this->actingAs($this->admin)
+            ->get('/launch/banyumas-smart-city')
+            ->assertStatus(302);
+
+        $this->assertSame($before + 1, ApplicationVisit::count());
+
+        // This test owns the row it created; the admin is a seeded user, so it is
+        // not swept by tearDown() with the UJI fixtures.
+        ApplicationVisit::where('application_link_id', $link->id)
+            ->where('user_id', $this->admin->id)
+            ->where('visit_date', now()->toDateString())
+            ->delete();
+    }
+
+    public function test_admin_does_not_bypass_an_inactive_link_either(): void
+    {
+        $inactiveLink = $this->dataHub->links()->where('is_active', false)->firstOrFail();
+        $before = ApplicationVisit::count();
+
+        $this->actingAs($this->admin)
+            ->get("/launch/data-hub-banyumas/{$inactiveLink->id}")
+            ->assertStatus(403)
+            ->assertSee('Tautan aplikasi ini sedang tidak aktif.');
+
+        $this->assertSame($before, ApplicationVisit::count(),
+            'peluncuran yang ditolak tidak boleh mencatat kunjungan');
+    }
 }
