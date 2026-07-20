@@ -5,33 +5,18 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\ApplicationVisit;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
  * Server-side launch guard (FR-A10): access enforcement + is_active availability.
  *
- * These tests run against the seeded dev PostgreSQL database, because the domain
- * migrations use PostgreSQL-only DDL (ALTER TABLE ADD CONSTRAINT, a COALESCE
- * expression index) that the default in-memory sqlite test connection cannot
- * host. No RefreshDatabase — assertions read the existing seeded rows. Using
- * actingAs() bypasses the /login flow (and its Turnstile check), which is correct
- * because /launch is guarded by the auth + access logic, not by Turnstile.
+ * These tests run against an isolated PostgreSQL test database because the
+ * domain migrations use PostgreSQL-only DDL. RefreshDatabase seeds the baseline
+ * once and rolls each test back. actingAs() bypasses the login Turnstile, which
+ * is correct because /launch is guarded by auth + access logic.
  */
 class LaunchGuardTest extends TestCase
 {
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Point the default connection at the real seeded pgsql dev database.
-        config([
-            'database.default' => 'pgsql',
-            'database.connections.pgsql.database' => 'sistem_eoffice',
-        ]);
-        DB::purge('pgsql');
-    }
-
     private function user(string $nip): User
     {
         return User::where('nip_nik', $nip)->firstOrFail();

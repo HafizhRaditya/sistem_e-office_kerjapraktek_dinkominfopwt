@@ -136,3 +136,36 @@ Lihat **ROADMAP.md** untuk rencana harian. Ringkasan fase:
 | 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ⏳ |
 | 3 — Integrasi & UAT | 28–31 Jul | Deploy, UAT, **sistem selesai 31 Juli** | ⏳ |
 | 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ |
+
+---
+
+## 9. Menyiapkan Lingkungan Lokal
+
+Proyek ini memakai PostgreSQL. Migration domain tidak kompatibel dengan SQLite
+karena menggunakan `CHECK` constraint dan expression index PostgreSQL.
+
+1. Buat dua database kosong pada server PostgreSQL:
+   - `sistem_eoffice` untuk development.
+   - `sistem_eoffice_test` untuk automated test.
+2. Pastikan keduanya dimiliki oleh atau dapat dikelola penuh oleh user yang akan
+   diisi pada `DB_USERNAME`. Pembuatan database dilakukan lewat akun administrator
+   PostgreSQL; migration tetap menjadi satu-satunya pembentuk tabel aplikasi.
+3. Salin `.env.example` menjadi `.env`, lalu isi kredensial PostgreSQL lokal.
+4. Jalankan setup pada database development yang masih kosong:
+
+```bash
+composer run setup
+```
+
+Perintah tersebut memasang dependensi, membuat application key, menjalankan
+migration + seeder, dan membangun aset frontend.
+
+Automated test selalu memakai `sistem_eoffice_test` melalui `phpunit.xml`:
+
+```bash
+php artisan test
+```
+
+`tests/TestCase.php` memiliki safety guard: `migrate:fresh` hanya boleh berjalan
+pada koneksi PostgreSQL dengan nama database berakhiran `_test`. Jangan mengubah
+`DB_DATABASE` test menjadi database development atau production.
