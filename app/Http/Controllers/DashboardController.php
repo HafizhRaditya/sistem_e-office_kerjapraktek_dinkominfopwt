@@ -28,6 +28,12 @@ class DashboardController extends Controller
             : $user->accessibleApplicationIds();
         $accessible = array_flip($accessible);
 
+        $dayCounts = DB::table('application_visits')
+            ->where('visit_date', today()->toDateString())
+            ->selectRaw('application_id, count(*) AS c')
+            ->groupBy('application_id')
+            ->pluck('c', 'application_id');
+
         // Visit aggregates for the current month / year (AB2).
         $monthCounts = DB::table('application_visits')
             ->where('visit_date', '>=', now()->startOfMonth()->toDateString())
@@ -66,6 +72,7 @@ class DashboardController extends Controller
             'is_new' => (bool) $a->is_new,
             'description' => $a->description,
             'can_access' => isset($accessible[$a->id]),
+            'day_visits' => (int) ($dayCounts[$a->id] ?? 0),
             'month_visits' => (int) ($monthCounts[$a->id] ?? 0),
             'year_visits' => (int) ($yearCounts[$a->id] ?? 0),
             'links' => $a->links->map(fn ($l) => [
