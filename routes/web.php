@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
+use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
@@ -75,4 +76,5 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
 
         // Log Aktivitas — read-only viewer (FR-A12)
         Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('logs.index');
+        Route::get('/kuisioner/statistik', [AdminQuestionnaireController::class, 'statistics'])->name('questionnaires.statistics');
     });
