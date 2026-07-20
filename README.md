@@ -1,58 +1,138 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# E-Office Banyumas — Rebuild Project
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+> **Dokumen ini adalah sumber konteks utama proyek.** Jika Anda adalah AI assistant (Claude, Gemini, ChatGPT, Antigravity, Copilot, dll.) yang diminta membantu proyek ini, baca file ini terlebih dahulu sebelum menulis kode atau memberi saran. Patuhi konvensi, skema, dan pembagian tugas di bawah.
 
-## About Laravel
+---
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 1. Ringkasan Proyek
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**E-Office Banyumas** (`eoffice.banyumaskab.go.id`) adalah portal Single Sign-On (SSO) milik Pemerintah Kabupaten Banyumas yang menjadi pintu masuk tunggal ke 131 aplikasi dinas/pemerintahan ("cukup sekali login untuk semua aplikasi").
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Proyek ini adalah **pembangunan ulang (rebuild)** sistem tersebut dalam rangka **Kerja Praktik (KP)** mahasiswa Informatika Universitas Jenderal Soedirman di **Dinkominfo Kabupaten Banyumas**, periode **8 Juli – 7 Agustus 2026**. Target sistem selesai: **31 Juli 2026**.
 
-## Learning Laravel
+### Alasan rebuild
+Sistem lama berjalan di **PHP 5.5.33** (end-of-life sejak 2016), Nginx 1.10.2, Bootstrap, tanpa framework modern. Perlu diganti dengan stack yang aktif didukung.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### Ruang lingkup (permintaan resmi dari Dinkominfo)
+1. **Rebuild sistem** — migrasi ke bahasa/framework baru, perbarui tampilan dan keamanan.
+2. **Popup kuisioner** — popup yang selama ini menampilkan pengumuman ditambah fungsi kuisioner; **hitung dan tampilkan** jumlah user yang sudah mengeklik/mengisi kuisioner.
+3. **Pembatasan hak akses aplikasi (RBAC)** — semua aplikasi **tetap tampil** ke semua pegawai; aplikasi yang tidak menjadi hak akses user **ditandai** (ikon gembok, label "Tidak Memiliki Akses", tombol nonaktif) dan diblokir di level route/server (403). Bukan disembunyikan. *(Revisi pembimbing lapangan.)*
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Di luar ruang lingkup (out of scope)
+- Membangun ulang aplikasi-aplikasi tujuan (Presensi, SKP, dll.) — kita hanya membangun **portalnya**.
+- Integrasi SSO nyata ke aplikasi eksternal (cukup disimulasikan dengan tautan keluar).
+- Migrasi data produksi (gunakan data dummy/seeder yang menyerupai struktur asli).
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## 2. Tim & Pembagian Tugas
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+| Nama | NIM | Judul KP (terkunci) | Tanggung jawab |
+|---|---|---|---|
+| **Hafizh Naufal Raditya (HNR)** | H1D024061 | *Perancangan dan Implementasi Modul Autentikasi dan Kontrol Akses Aplikasi pada Pembangunan Ulang Sistem E-Office Dinkominfo Kabupaten Banyumas* | Login (NIP/NIK), sesi, ganti password, proteksi login, **RBAC**: penanda akses aplikasi per pegawai, middleware 403, halaman admin manajemen user/aplikasi/hak akses, activity log |
+| **Muhammad Abu Umar (MAU)** | H1D024084 | *Perancangan dan Implementasi Modul Dashboard Portal dan Kuisioner Partisipasi Pengguna pada Pembangunan Ulang Sistem E-Office Dinkominfo Kabupaten Banyumas* | Layout & dashboard, grid launcher aplikasi, tab/filter/pencarian, penghitung kunjungan, **popup kuisioner** + pencatatan partisipasi + halaman statistik partisipasi (termasuk rekap per OPD) |
 
-```bash
-composer require laravel/boost --dev
+Pembagian **per modul** (bukan per lapisan) — tiap orang menggarap fiturnya utuh dari database sampai tampilan. Pekerjaan bersama: analisis, ERD, integrasi, testing, deployment. Kontrak data paling kritis: `applications` + `application_links` + `application_access` (milik HNR) adalah sumber data grid dashboard (milik MAU).
 
-php artisan boost:install
+---
+
+## 3. Fitur Sistem Lama (hasil analisis 30 screenshot)
+
+| # | Halaman/Fitur | Keterangan |
+|---|---|---|
+| 1 | Login | Username "NIP atau NIK" + kata sandi (toggle lihat) + Cloudflare Turnstile, tautan "Lupa Password" |
+| 2 | Dashboard | Hero + CTA; seksi "Aplikasi Paling Sering Diakses"; tab grup **Smart City (123) / SPBE (26) / Tools (6)**; filter status & 11 kategori berwarna; pencarian |
+| 3 | Kartu aplikasi | Label OPD pemilik, ikon, nama, 1–3 tombol tautan (BACKEND/FRONTEND/varian), status AKTIF, penghitung "pengunjung bulan/tahun ini" |
+| 4 | Popup sambutan | Modal bergambar muncul setelah login → **akan dikembangkan menjadi popup kuisioner** |
+| 5 | Ganti password | Form ubah kata sandi (di sistem lama tanpa verifikasi sandi lama — diperbaiki di rebuild) |
+| 6 | Menu pengguna | Dropdown navbar: Ubah Sandi, Logout (tidak ada halaman profil biodata di sistem lama) |
+
+Screenshot lengkap ada di folder `docs/screenshots/` (ss_01–ss_30).
+
+---
+
+## 4. Tech Stack (baru)
+
+| Lapisan | Teknologi | Catatan |
+|---|---|---|
+| Backend | **Laravel 13 (PHP 8.4)** | Migrasi natural dari PHP lama; tim Dinkominfo familiar PHP |
+| Frontend | **Blade + Tailwind CSS + Alpine.js** | Sederhana, cepat, cukup untuk portal |
+| Database | **PostgreSQL 18** | Keputusan tim; wajib PostgreSQL (bukan MySQL) |
+| Auth | Laravel session-based + kontrol akses via kolom `users.role` + tabel `application_access` | Dua role: admin, pegawai |
+| Proteksi login | Rate limiting Laravel + CAPTCHA (Turnstile) | |
+| Versi kontrol | Git + GitHub, branch `main` / `dev` / `feat/*` | PR wajib direview partner |
+
+> Jika pembimbing lapangan mensyaratkan stack lain, perbarui tabel ini terlebih dahulu sebelum menulis kode.
+
+---
+
+## 5. Skema Database (ringkas — ERD lengkap di `docs/erd/`)
+
+```
+opds                    : id, code (UK), name, is_active, timestamps
+users                   : id, opd_id (FK), nip_nik (UK, login), name, email (UK,null),
+                          password, role (CHECK admin|pegawai), is_active, last_login_at, timestamps
+applications            : id, opd_id (FK), name, slug (UK), description, icon,
+                          app_group (CHECK smartcity|spbe|tools), category (CHECK), is_active, is_new, sort_order, timestamps
+application_links       : id, application_id (FK), label, url, is_active, sort_order, timestamps  [UNIQUE(application_id,label)]
+application_access      : id, application_id (FK), user_id (FK), timestamps  [UNIQUE(application_id,user_id)] -- hak akses per pegawai
+application_visits      : id, application_id (FK), application_link_id (FK,null), user_id (FK), visit_date, visited_at  (tanpa timestamps)
+questionnaires          : id, created_by (FK), title, description, banner_image, target_url,
+                          is_active, starts_at, ends_at (CHECK ends>=starts), timestamps
+questionnaire_responses : id, questionnaire_id (FK), user_id (FK), clicked_at  (tanpa timestamps)  [UNIQUE(questionnaire_id,user_id)]
+activity_logs           : id, user_id (FK,null), application_id (FK,null), questionnaire_id (FK,null),
+                          activity_type, description, ip_address, user_agent, created_at
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+**Aturan bisnis penting (ditegakkan DI DATABASE, bukan hanya di kode):**
+- **Role** = kolom `users.role` CHECK ('admin','pegawai'); tidak ada tabel roles. **Login** memakai `nip_nik`.
+- Semua aplikasi tetap tampil; hak akses (`application_access`) hanya **menandai** kartu + memvalidasi peluncuran server (403). `can_access(user,app) = role='admin' OR ada baris application_access(app,user)`.
+- **1 pegawai = 1 klik per kuisioner** (selamanya): `UNIQUE (questionnaire_id, user_id)`.
+- **1 kunjungan per tombol/pegawai/hari**: UNIQUE INDEX `uq_visit_daily` pada `(COALESCE(application_link_id,-1), user_id, visit_date)` — via raw `DB::statement`. Backend & Frontend aplikasi sama di hari sama = 2 kunjungan; tombol sama 2x sehari = 1.
+- Tabel event (`application_visits`, `questionnaire_responses`, `activity_logs`) tanpa `created_at`/`updated_at` → model `$timestamps = false`.
+- Statistik partisipasi = jumlah `questionnaire_responses` per kuisioner + persentase terhadap pegawai aktif + rekap per OPD.
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## 6. Struktur Proyek
 
-## Code of Conduct
+```
+sistem_e-office_kerjapraktek_dinkominfopwt/
+├── README.md            ← file ini (konteks utama untuk manusia & AI)
+├── ROADMAP.md           ← rencana harian 8 Juli – 7 Agustus 2026
+├── schema.sql           ← DDL rancangan (validasi ERD; sumber kebenaran = migration)
+├── docs/
+│   ├── screenshots/     ← 30 screenshot sistem lama (referensi rebuild)
+│   ├── inventaris/      ← inventarisasi fitur per modul
+│   ├── erd/             ← ERD final v2.1 (gambar + dokumen)
+│   ├── kebutuhan/       ← KF_AUTH_RBAC & KF_DASHBOARD_KUISIONER (final)
+│   ├── mockup/          ← mockup_login.html, mockup_dashboard_v2.html
+│   └── testing/         ← tabel skenario blackbox testing (bahan laporan)
+└── (proyek Laravel di root: app/ database/ resources/ routes/ ...)
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 7. Konvensi untuk Kontributor (termasuk AI Assistant)
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. **Bahasa:** komentar kode & nama variabel berbahasa **Inggris**; teks UI berbahasa **Indonesia** (pengguna adalah ASN).
+2. **Jangan mengubah skema database** pada Bagian 5 tanpa persetujuan kedua anggota tim — grid dashboard dan RBAC saling bergantung padanya.
+3. **Migration adalah satu-satunya sumber kebenaran struktur DB.** Jangan menambal database langsung via SQL/`psql`; ubah lewat migration lalu `php artisan migrate`. (`schema.sql` hanya artefak validasi rancangan.)
+4. **Keamanan minimum:** password di-hash (bcrypt), semua form ber-CSRF token, input tervalidasi, query lewat Eloquent/parameter binding (tanpa raw SQL rentan injeksi), route sensitif di belakang middleware auth + cek akses, ubah sandi wajib verifikasi sandi lama.
+5. **Data:** jangan pernah memakai data ASN asli dalam pengembangan — gunakan seeder dummy. `.env` tidak masuk Git; samakan konfigurasi lewat `.env.example`.
+6. **Setiap fitur baru** harus: berjalan, teruji manual, di-PR ke `dev`, dan dicatat sebagai bahan laporan KP.
+7. Saat membantu, **sebutkan file/tabel yang Anda ubah** dan jelaskan dampaknya ke modul partner (HNR ↔ MAU). Jangan sentuh modul partner tanpa koordinasi.
 
-## License
+---
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 8. Status & Timeline
+
+Lihat **ROADMAP.md** untuk rencana harian. Ringkasan fase:
+
+| Fase | Periode | Target | Status |
+|---|---|---|---|
+| 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
+| 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | 🔄 sebagian besar selesai (auth, RBAC 403, dashboard data-driven) |
+| 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ⏳ |
+| 3 — Integrasi & UAT | 28–31 Jul | Deploy, UAT, **sistem selesai 31 Juli** | ⏳ |
+| 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ |
