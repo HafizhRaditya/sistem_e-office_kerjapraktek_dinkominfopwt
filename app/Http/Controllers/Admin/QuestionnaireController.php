@@ -8,9 +8,125 @@ use App\Models\QuestionnaireResponse;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Storage;
 
+/**
+ * Admin — CRUD kuisioner dan statistik partisipasi.
+ *
+ * Gambar unggahan disimpan pada public disk di questionnaires/. Kuisioner yang
+ * sudah mempunyai respons tidak boleh dihapus agar riwayat statistik terjaga.
+ */
 class QuestionnaireController extends Controller
 {
+    public function index(Request $request)
+    {
+        $search = trim((string) $request->query('search'));
+        $status = (string) $request->query('status', 'all');
+        $status = in_array($status, ['all', 'active', 'scheduled', 'expired', 'inactive'], true)
+            ? $status
+            : 'all';
+        $now = now();
+
+        $questionnaires = Questionnaire::query()
+            ->with('creator:id,name')
+            ->withCount('responses')
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where(function ($nested) use ($search): void {
+                    $nested
+                        ->where('title', 'ilike', "%{$search}%")
+                        ->orWhere('description', 'ilike', "%{$search}%")
+                        ->orWhere('target_url', 'ilike', "%{$search}%");
+                });
+            })
+            ->when($status === 'active', function ($query) use ($now): void {
+                $query
+                    ->where('is_active', true)
+                    ->where(fn ($period) => $period->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
+                    ->where(fn ($period) => $period->whereNull('ends_at')->orWhere('ends_at', '>=', $now));
+            })
+            ->when($status === 'scheduled', function ($query) use ($now): void {
+                $query->where('is_active', true)->where('starts_at', '>', $now);
+            })
+            ->when($status === 'expired', function ($query) use ($now): void {
+                $query->where('is_active', true)->whereNotNull('ends_at')->where('ends_at', '<', $now);
+            })
+            ->when($status === 'inactive', fn ($query) => $query->where('is_active', false))
+            ->orderBy('sort_order')
+            ->orderByDesc('created_at')
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('admin.kuisioner.index', compact('questionnaires', 'search', 'status'));
+    }
+
+    public function create()
+    {
+        return view('admin.kuisioner.create');
+    }
+
+    public function store(Request $request)
+    {
+        $data = $this->validateData($request);
+        $data['created_by'] = $request->user()->id;
+        $data['banner_image'] = $this->resolveImagePath(
+            $request,
+            null,
+            $data['banner_image'] ?? null,
+        );
+        unset($data['image'], $data['remove_image']);
+
+        $questionnaire = Questionnaire::create($data);
+
+        return redirect()
+            ->route('admin.questionnaires.edit', $questionnaire)
+            ->with('status', "Kuisioner \"{$questionnaire->title}\" berhasil ditambahkan.");
+    }
+
+    public function edit(Questionnaire $questionnaire)
+    {
+        $questionnaire->load('creator:id,name')->loadCount('responses');
+
+        return view('admin.kuisioner.edit', compact('questionnaire'));
+    }
+
+    public function update(Request $request, Questionnaire $questionnaire)
+    {
+        $data = $this->validateData($request);
+        $data['banner_image'] = $this->resolveImagePath(
+            $request,
+            $questionnaire->banner_image,
+            $data['banner_image'] ?? null,
+        );
+        unset($data['image'], $data['remove_image']);
+
+        $questionnaire->update($data);
+
+        return redirect()
+            ->route('admin.questionnaires.edit', $questionnaire)
+            ->with('status', 'Kuisioner berhasil diperbarui.');
+    }
+
+    public function destroy(Questionnaire $questionnaire)
+    {
+        $responsesCount = $questionnaire->responses()->count();
+
+        if ($responsesCount > 0) {
+            return redirect()
+                ->route('admin.questionnaires.index')
+                ->withErrors([
+                    'questionnaire' => "Kuisioner \"{$questionnaire->title}\" tidak dapat dihapus karena sudah memiliki {$responsesCount} respons. Nonaktifkan kuisioner untuk mempertahankan riwayat statistik.",
+                ]);
+        }
+
+        $title = $questionnaire->title;
+        $this->deleteManagedImage($questionnaire->banner_image);
+        $questionnaire->delete();
+
+        return redirect()
+            ->route('admin.questionnaires.index')
+            ->with('status', "Kuisioner \"{$title}\" berhasil dihapus.");
+    }
+
     public function statistics(Request $request)
     {
         $validated = $request->validate([
@@ -121,5 +237,89 @@ class QuestionnaireController extends Controller
             'employees' => $filteredEmployees,
             'respondedIds' => $respondedIds,
         ]);
+    }
+
+    private function validateData(Request $request): array
+    {
+        return $request->validate([
+            'title' => ['required', 'string', 'max:200'],
+            'description' => ['nullable', 'string'],
+            'banner_image' => [
+                'nullable',
+                'string',
+                'max:255',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if (blank($value)) {
+                        return;
+                    }
+
+                    $isHttpUrl = filter_var($value, FILTER_VALIDATE_URL)
+                        && in_array(parse_url($value, PHP_URL_SCHEME), ['http', 'https'], true);
+                    $isPublicPath = preg_match('#^/?[A-Za-z0-9][A-Za-z0-9._/-]*$#', $value) === 1;
+
+                    if (! $isHttpUrl && ! $isPublicPath) {
+                        $fail('URL/path gambar harus berupa URL HTTP/HTTPS atau path aset publik yang valid.');
+                    }
+                },
+            ],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'remove_image' => ['nullable', 'boolean'],
+            'target_url' => ['required', 'url:http,https', 'max:500'],
+            'starts_at' => ['nullable', 'date'],
+            'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'sort_order' => ['required', 'integer', 'min:0', 'max:999999'],
+        ], [
+            'title.required' => 'Judul kuisioner wajib diisi.',
+            'title.max' => 'Judul kuisioner maksimal 200 karakter.',
+            'image.image' => 'Berkas gambar tidak valid.',
+            'image.mimes' => 'Gambar harus berformat JPG, JPEG, PNG, atau WEBP.',
+            'image.max' => 'Ukuran gambar maksimal 5 MB.',
+            'banner_image.max' => 'Path atau URL gambar maksimal 255 karakter.',
+            'target_url.required' => 'Tautan formulir wajib diisi.',
+            'target_url.url' => 'Tautan formulir harus berupa URL HTTP atau HTTPS yang valid.',
+            'target_url.max' => 'Tautan formulir maksimal 500 karakter.',
+            'starts_at.date' => 'Waktu mulai tidak valid.',
+            'ends_at.date' => 'Waktu selesai tidak valid.',
+            'ends_at.after_or_equal' => 'Waktu selesai tidak boleh lebih awal daripada waktu mulai.',
+            'sort_order.required' => 'Urutan kuisioner wajib diisi.',
+            'sort_order.integer' => 'Urutan kuisioner harus berupa angka bulat.',
+            'sort_order.min' => 'Urutan kuisioner tidak boleh negatif.',
+        ]) + [
+            'is_active' => $request->boolean('is_active'),
+        ];
+    }
+
+    private function resolveImagePath(Request $request, ?string $currentPath, ?string $submittedPath): ?string
+    {
+        if ($request->hasFile('image')) {
+            $this->deleteManagedImage($currentPath);
+
+            $storedPath = $request->file('image')->store('questionnaires', 'public');
+
+            return '/storage/'.$storedPath;
+        }
+
+        if ($request->boolean('remove_image')) {
+            $this->deleteManagedImage($currentPath);
+
+            return null;
+        }
+
+        $submittedPath = filled($submittedPath) ? trim($submittedPath) : null;
+
+        if ($submittedPath !== $currentPath) {
+            $this->deleteManagedImage($currentPath);
+        }
+
+        return $submittedPath;
+    }
+
+    private function deleteManagedImage(?string $path): void
+    {
+        if (! $path || ! str_starts_with($path, '/storage/questionnaires/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(substr($path, strlen('/storage/')));
     }
 }
