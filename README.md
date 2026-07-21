@@ -184,6 +184,41 @@ composer run setup
 Perintah tersebut memasang dependensi, membuat application key, menjalankan
 migration + seeder, dan membangun aset frontend.
 
+5. Buat symlink penyimpanan berkas unggahan:
+
+```bash
+php artisan storage:link
+```
+
+**Wajib, dan `composer run setup` belum menjalankannya.** Gambar banner yang
+diunggah lewat panel admin disimpan ke `storage/app/public/banners/`, lalu dirujuk
+di browser sebagai `/storage/banners/...`. Symlink `public/storage` inilah yang
+menyambungkan keduanya.
+
+Tanpa symlink tersebut, unggahan **tetap tersimpan dan tidak ada pesan error apa
+pun** — tetapi gambarnya tampil rusak di dashboard maupun di panel admin. Gejalanya
+menyesatkan karena tidak ada yang terlihat gagal. Symlink ini masuk `.gitignore`
+(`/public/storage`), jadi setiap mesin harus membuatnya sendiri sekali.
+
+### Ringkasan urutan setup
+
+```bash
+composer install                 # dependensi PHP
+npm install                      # dependensi frontend
+php artisan migrate              # bentuk tabel (schema dari migration)
+php artisan db:seed              # data dummy pegawai, aplikasi, kuisioner
+php artisan storage:link         # symlink unggahan -> public/storage
+npm run build                    # aset produksi (atau `npm run dev` saat mengembangkan)
+```
+
+Langkah 1–2 dan 4–6 di atas setara dengan `composer run setup`, **kecuali
+`storage:link`** yang harus dijalankan terpisah.
+
+> **Catatan `npm run dev`:** jika dev server pernah dijalankan lalu dimatikan paksa,
+> berkas `public/hot` bisa tertinggal dan membuat `@vite` menunjuk ke server yang
+> sudah mati — akibatnya seluruh JS (Alpine/Livewire) mati. Untuk demo, pakai
+> `npm run build` dan pastikan `public/hot` tidak ada.
+
 Automated test selalu memakai `sistem_eoffice_test` melalui `phpunit.xml`:
 
 ```bash
