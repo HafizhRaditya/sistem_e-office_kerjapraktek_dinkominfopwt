@@ -10,11 +10,11 @@
 | Hal | Keterangan |
 |---|---|
 | Tanggal uji | 21 Juli 2026 |
-| Commit diuji | `65d7030` (branch `main`) |
+| Commit diuji | `08c83c6` (branch `main`) |
 | Stack | Laravel 13 · PHP 8.4.12 · PostgreSQL 18.4 |
 | Basis data uji | `sistem_eoffice_test` (terpisah dari `sistem_eoffice` pengembangan) |
 | Perintah | `php artisan test` |
-| Hasil suite | **90 test lolos, 0 gagal, 445 assertion** |
+| Hasil suite | **103 test lolos, 0 gagal, 529 assertion** |
 
 Akun uji dari seeder (`EofficeV21Seeder`), seluruh sandi `password`:
 
@@ -33,35 +33,39 @@ Aplikasi uji: `banyumas-smart-city`, `simpus`, `e-planning`, `data-hub-banyumas`
 | Status | Arti |
 |---|---|
 | ✅ **Lolos (otomatis)** | Diverifikasi oleh test otomatis pada `php artisan test`; nama berkas test dicantumkan |
-| 🔍 **Perlu uji manual** | Fitur ada di kode, perilakunya dibaca dari sumber, **belum** ada test otomatis. Hasil Aktual diisi setelah diuji manual |
 
-> **Catatan kejujuran.** Baris berstatus 🔍 sengaja tidak diklaim "lolos". Fitur-fitur
-> tersebut memang terimplementasi (rujukan berkas + baris dicantumkan), tetapi belum
-> tercakup test otomatis, sehingga tidak ada bukti eksekusi yang bisa dijadikan dasar.
-> Isi kolom **Hasil Aktual** setelah menjalankan langkah ujinya di peramban.
+Seluruh skenario pada dokumen ini terverifikasi otomatis. Kolom **Hasil Aktual**
+diisi berdasarkan keluaran `php artisan test` yang nyata, bukan pengamatan manual.
+
+> **Catatan validitas pengujian.** Test-test ini diuji balik dengan *mutation
+> testing*: guard rate limit, pemeriksaan `is_active`, dan aturan `current_password`
+> masing-masing dilumpuhkan sementara, lalu suite dijalankan ulang. Setiap mutasi
+> membuat **tepat** test yang menargetkannya gagal — membuktikan test benar-benar
+> menguji perilaku tersebut, bukan sekadar hijau. Kode dikembalikan seperti semula
+> setelah pemeriksaan.
 
 ---
 
-## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-10)
+## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-12)
+
+Seluruh baris pada tabel ini **terverifikasi otomatis**.
 
 | No | Skenario | Langkah Uji | Hasil Diharapkan | Hasil Aktual | Status |
 |---|---|---|---|---|---|
 | **AUT-01** | Login admin dengan kredensial benar | Buka `/login` → isi `ADMIN001` / `password` → klik **Masuk** | Sesi dibuat, `last_login_at` diperbarui, dicatat `login_success`, diarahkan ke `/admin/akses` | Sesuai — pengalihan ke `/admin/akses`, autentikasi terverifikasi | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
 | **AUT-02** | Login pegawai dengan kredensial benar | Buka `/login` → isi `3302010000000002` / `password` → klik **Masuk** | Sesi dibuat, diarahkan ke `/dashboard` (bukan panel admin) | Sesuai — pengalihan ke `/dashboard` | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
-| **AUT-03** | Login dengan kata sandi salah | Isi `3302010000000002` / `salahsandi` → **Masuk** | Ditolak, pesan **"NIP/NIK atau kata sandi salah."**, dicatat `login_failed`, penghitung rate limit bertambah | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:68–75` |
-| **AUT-04** | Login dengan NIP/NIK tidak terdaftar | Isi `9999999999999999` / `password` → **Masuk** | Ditolak dengan pesan **sama persis** seperti AUT-03 (tidak membocorkan apakah NIP terdaftar) | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:66–75` |
-| **AUT-05** | Field kosong divalidasi | Kosongkan NIP/NIK dan kata sandi → **Masuk** | Pesan Indonesia per-field: "NIP/NIK wajib diisi." dan "Kata sandi wajib diisi." | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:36–44` |
-| **AUT-06** | Rate limit percobaan login | Ulangi login gagal **6×** dengan NIP/IP sama dalam < 60 detik | Percobaan ke-6 diblokir: **"Terlalu banyak percobaan masuk. Silakan coba lagi dalam N detik."**, dicatat `login_failed` (rate limit). Batas 5×/60 detik per (NIP + IP) | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:48–56` |
-| **AUT-07** | Login akun nonaktif | Admin nonaktifkan akun pegawai lewat panel → pegawai coba login dengan sandi **benar** | Ditolak: **"Akun Anda dinonaktifkan. Hubungi admin OPD."** Sesi tidak dibuat meski sandi benar | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:78–86` |
+| **AUT-03** | Login dengan kata sandi salah | Isi `3302010000000002` / `sandi-yang-salah` → **Masuk** | Ditolak, pesan **"NIP/NIK atau kata sandi salah."**, dicatat `login_failed` beratribut pengguna tersebut, sesi tidak dibuat | Sesuai — pesan cocok persis, tetap tamu, jumlah `login_failed` bertambah 1 dengan `user_id` terisi | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-04** | Login dengan NIP/NIK tidak terdaftar | Isi `9999999999999999` / `password` → **Masuk** | Ditolak dengan pesan **sama persis** seperti AUT-03 (tidak membocorkan apakah NIP terdaftar); dicatat `login_failed` dengan `user_id` kosong | Sesuai — pesan identik dengan AUT-03, baris log tercatat dengan `user_id = null` | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-05** | Field kosong divalidasi | Kosongkan NIP/NIK dan kata sandi → **Masuk** | Pesan Indonesia per-field: "NIP/NIK wajib diisi." dan "Kata sandi wajib diisi." | Sesuai — kedua pesan muncul pada field masing-masing, tetap tamu | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-06** | Rate limit percobaan login | Ulangi login gagal **6×** dengan NIP/IP sama dalam < 60 detik | Lima percobaan pertama ditolak karena kredensial; percobaan ke-6 diblokir limiter: **"Terlalu banyak percobaan masuk. Silakan coba lagi dalam N detik."** Batas 5×/60 detik per (NIP + IP) | Sesuai — percobaan ke-6 memunculkan pesan rate limit, bukan pesan kredensial | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-06b** | Rate limit berlaku sebelum kredensial diperiksa | Setelah 5× gagal, coba login dengan kata sandi **benar** | Tetap diblokir — limiter dievaluasi lebih dulu daripada pencocokan kredensial | Sesuai — tetap tamu meski sandi benar | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-07** | Login akun nonaktif | Nonaktifkan akun pegawai (`is_active = false`) → coba login dengan sandi **benar** | Ditolak: **"Akun Anda dinonaktifkan. Hubungi admin OPD."** Sesi tidak dibuat, dan `last_login_at` tidak diperbarui | Sesuai — tetap tamu, `login_failed` tercatat, `last_login_at` tetap kosong | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
 | **AUT-08** | Akses halaman tanpa login | Sebagai tamu, buka `/dashboard` lalu `/admin/akses` | Dialihkan ke `/login` (bukan 403 — keberadaan halaman tidak dibocorkan ke tamu) | Sesuai — keduanya dialihkan ke `/login` | ✅ Lolos (otomatis)<br>`LoginRedirectTest`, `AdminAccessControlTest` |
-| **AUT-09** | Ubah sandi dengan sandi lama salah | Login → `/ubah-sandi` → isi sandi lama `salah`, sandi baru valid → **Simpan** | Ditolak: **"Kata sandi lama salah."** Sandi tidak berubah | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`PasswordController.php:22–28` |
-| **AUT-10** | Ubah sandi: kebijakan sandi & keberhasilan | (a) sandi baru `abc` → (b) sandi baru `hanyahuruf` → (c) sandi baru `rahasia123` + konfirmasi cocok | (a) "Kata sandi baru minimal 8 karakter." (b) "Kata sandi baru harus mengandung huruf dan angka." (c) berhasil, dicatat `password_changed`, sandi baru dapat dipakai login | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`PasswordController.php:25–32` |
-
-**Tambahan — logout** *(di luar penomoran AUT karena belum ada test otomatis)*
-
-| No | Skenario | Langkah Uji | Hasil Diharapkan | Hasil Aktual | Status |
-|---|---|---|---|---|---|
-| AUT-11 | Logout mengakhiri sesi | Login → klik **Logout** → tekan tombol *back* peramban → buka `/dashboard` | Sesi di-*invalidate*, token CSRF diregenerasi, dicatat `logout`; `/dashboard` kembali meminta login | *(diisi saat uji manual)* | 🔍 Perlu uji manual<br>`AuthController.php:112–120` |
+| **AUT-09** | Ubah sandi dengan sandi lama salah | Login → `/ubah-sandi` → isi sandi lama `bukan-sandi-lama`, sandi baru valid → **Simpan** | Ditolak: **"Kata sandi lama salah."** Hash sandi tidak berubah dan sandi lama tetap berlaku | Sesuai — hash sebelum dan sesudah identik, sandi lama masih cocok | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
+| **AUT-10** | Ubah sandi: kebijakan sandi ditegakkan | (a) sandi baru `abc1` · (b) sandi baru `hanyahurufsaja` · (c) konfirmasi tidak cocok | (a) "Kata sandi baru minimal 8 karakter." (b) "Kata sandi baru harus mengandung huruf dan angka." (c) "Konfirmasi kata sandi baru tidak cocok." Sandi tidak berubah pada ketiga kasus | Sesuai — ketiga pesan muncul tepat, sandi lama tetap berlaku | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
+| **AUT-10b** | Ubah sandi valid, terpakai untuk login | Sandi lama benar + sandi baru `rahasia123` + konfirmasi cocok → **Simpan** → logout → login memakai sandi baru | Berhasil, flash "Kata sandi berhasil diubah.", dicatat `password_changed`, sandi lama tidak berlaku lagi, sandi baru dapat dipakai masuk | Sesuai — login ulang dengan sandi baru berhasil ke `/dashboard`; sandi tersimpan ter-hash, bukan teks polos | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
+| **AUT-11** | Logout mengakhiri sesi | Login sebagai pegawai → kirim `POST /logout` → buka kembali `/dashboard` | Sesi di-*invalidate*, token CSRF diregenerasi, dicatat `logout` beratribut pengguna tersebut, dialihkan ke `/login`; `/dashboard` kembali meminta login | Sesuai — kembali menjadi tamu, baris `logout` tercatat, `/dashboard` dialihkan ke `/login` | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
+| **AUT-12** | Halaman ubah sandi tertutup bagi tamu | Tanpa sesi, buka `/ubah-sandi` dan kirim `PUT` ke `/ubah-sandi` | Keduanya dialihkan ke `/login` | Sesuai | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
 
 ---
 
@@ -108,11 +112,18 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
    menutup klaim: *panel menulis baris X* **dan** *baris X langsung berlaku dalam
    sesi berjalan*.
 
-4. **Cakupan pengujian otomatis.** Dari 25 skenario di dokumen ini, **17 terverifikasi
-   otomatis** (seluruh RBAC-01…14 + AUT-01, AUT-02, AUT-08) dan **8 masih memerlukan
-   uji manual** (AUT-03…07, AUT-09…11). Kesenjangan ini terkonsentrasi pada jalur
-   *kegagalan* login dan fitur ubah sandi. Menambahkan test otomatis untuk kelompok
-   tersebut adalah peluang perbaikan yang layak dicatat pada Bab 5 (Saran).
+4. **Cakupan pengujian otomatis: 100%.** Seluruh **28 skenario** pada dokumen ini
+   (AUT-01…12 dan RBAC-01…14) terverifikasi oleh test otomatis. Kesenjangan yang
+   sempat ada — jalur *kegagalan* login (sandi salah, NIP tak dikenal, field kosong,
+   rate limit, akun nonaktif), logout, dan seluruh fitur ubah sandi — ditutup dengan
+   menambahkan `AuthenticationTest` (7 test) dan `ChangePasswordTest` (6 test).
+   Jumlah test suite naik dari 90 menjadi **103**.
+
+5. **Pesan penolakan login sengaja dibuat seragam.** AUT-03 (sandi salah) dan AUT-04
+   (NIP tidak terdaftar) mengembalikan kalimat yang **sama persis**. Ini keputusan
+   keamanan: bila pesannya dibedakan, form login dapat dipakai untuk menyimpulkan
+   NIP/NIK mana yang terdaftar di sistem (*user enumeration*). Test AUT-04 menegakkan
+   properti ini, sehingga perubahan yang tidak sengaja membedakannya akan tertangkap.
 
 5. **Turnstile pada pengujian.** Verifikasi Cloudflare Turnstile aktif di lingkungan
    pengembangan. Pada pengujian otomatis, endpoint verifikasinya dipalsukan
