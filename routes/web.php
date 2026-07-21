@@ -73,6 +73,14 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::put('/banner/{banner}', [BannerController::class, 'update'])->name('banners.update');
         Route::delete('/banner/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy');
 
+        // Manajemen Kuisioner — CRUD popup surveys + statistics
+        Route::get('/kuisioner', [AdminQuestionnaireController::class, 'index'])->name('questionnaires.index');
+        Route::get('/kuisioner/create', [AdminQuestionnaireController::class, 'create'])->name('questionnaires.create');
+        Route::post('/kuisioner', [AdminQuestionnaireController::class, 'store'])->name('questionnaires.store');
+        Route::get('/kuisioner/{questionnaire}/edit', [AdminQuestionnaireController::class, 'edit'])->name('questionnaires.edit');
+        Route::put('/kuisioner/{questionnaire}', [AdminQuestionnaireController::class, 'update'])->name('questionnaires.update');
+        Route::delete('/kuisioner/{questionnaire}', [AdminQuestionnaireController::class, 'destroy'])->name('questionnaires.destroy');
+
         // Manajemen Pengguna — CRUD users (self-protection: no self deactivate/demote/delete)
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
         Route::get('/pengguna/create', [UserController::class, 'create'])->name('users.create');
