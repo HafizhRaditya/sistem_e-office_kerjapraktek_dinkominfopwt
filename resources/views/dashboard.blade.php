@@ -6,7 +6,7 @@
 <div x-data="dashboard(@js($apps), @js($heroSlides ?? []), @js($popupSlides ?? []))">
 
     {{-- ======= Hero (red brand surface) ======= --}}
-    <section class="relative overflow-hidden bg-gradient-to-br from-branddark via-brand to-branddark text-white"
+    <section class="relative overflow-hidden bg-slate-900 text-white"
         @mouseenter="heroPaused = true" @mouseleave="heroPaused = false"
         @touchstart.passive="touchStart('hero', $event)" @touchend.passive="touchEnd('hero', $event)">
         <template x-for="(slide, index) in heroSlides" :key="'hero-' + slide.id">
@@ -14,7 +14,7 @@
                 <template x-if="slide.image">
                     <img :src="slide.image" :alt="slide.title" class="h-full w-full object-cover">
                 </template>
-                <div class="absolute inset-0 bg-gradient-to-br from-branddark/95 via-brand/85 to-branddark/90"></div>
+                <div class="absolute inset-0 bg-gradient-to-b from-slate-950/45 via-slate-950/30 to-slate-950/55"></div>
             </div>
         </template>
         <div class="relative max-w-7xl mx-auto px-6 pt-14 pb-16 text-center">

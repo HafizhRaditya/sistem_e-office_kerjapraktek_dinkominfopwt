@@ -121,10 +121,14 @@ class UserController extends Controller
             return back()->withErrors(['user' => 'Anda tidak dapat menghapus akun sendiri.']);
         }
 
-        // questionnaires.created_by is ON DELETE RESTRICT — refuse cleanly instead
-        // of letting the database throw.
+        // created_by uses ON DELETE RESTRICT on administrator-owned content.
+        // Refuse cleanly instead of letting the database throw an FK error.
         if (DB::table('questionnaires')->where('created_by', $user->id)->exists()) {
             return back()->withErrors(['user' => 'Pengguna ini tercatat sebagai pembuat kuisioner, sehingga tidak dapat dihapus. Nonaktifkan akunnya saja.']);
+        }
+
+        if (DB::table('banners')->where('created_by', $user->id)->exists()) {
+            return back()->withErrors(['user' => 'Pengguna ini tercatat sebagai pembuat banner, sehingga tidak dapat dihapus. Nonaktifkan akunnya saja.']);
         }
 
         $name = $user->name;
