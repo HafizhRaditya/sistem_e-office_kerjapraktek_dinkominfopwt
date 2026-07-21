@@ -77,13 +77,13 @@
                     <input type="search" x-model="q" placeholder="Cari aplikasi…"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
                 </div>
-                <select x-model="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+                <select x-model="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
                     <option value="all">Semua OPD pemilik</option>
                     @foreach ($opds as $o)
                         <option value="{{ $o->code }}">{{ $o->name }}</option>
                     @endforeach
                 </select>
-                <select x-model="cat" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand capitalize">
+                <select x-model="cat" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 capitalize">
                     <option value="all">Semua kategori</option>
                     @foreach ($categories as $c)
                         <option value="{{ $c }}">{{ ucfirst($c) }}</option>

@@ -26,7 +26,7 @@
     <form method="GET" action="{{ route('admin.logs.index') }}" class="mt-5 flex flex-wrap items-end gap-3">
         <div>
             <label for="user" class="block text-xs font-medium text-slate-500 mb-1">Pengguna</label>
-            <select id="user" name="user" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+            <select id="user" name="user" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
                 <option value="">Semua pengguna</option>
                 @foreach ($users as $u)
                     <option value="{{ $u->id }}" @selected((string) request('user') === (string) $u->id)>{{ $u->name }} ({{ $u->nip_nik }})</option>
@@ -35,7 +35,7 @@
         </div>
         <div>
             <label for="type" class="block text-xs font-medium text-slate-500 mb-1">Jenis aktivitas</label>
-            <select id="type" name="type" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+            <select id="type" name="type" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
                 <option value="">Semua jenis</option>
                 @foreach ($types as $t)
                     <option value="{{ $t }}" @selected(request('type') === $t)>{{ $t }}</option>
@@ -45,14 +45,14 @@
         <div>
             <label for="from" class="block text-xs font-medium text-slate-500 mb-1">Dari tanggal</label>
             <input id="from" name="from" type="date" value="{{ request('from') }}"
-                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
         </div>
         <div>
             <label for="to" class="block text-xs font-medium text-slate-500 mb-1">Sampai tanggal</label>
             <input id="to" name="to" type="date" value="{{ request('to') }}"
-                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+                class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
         </div>
-        <button type="submit" class="rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-4 py-2.5 transition">Terapkan</button>
+        <button type="submit" class="rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-5 py-2.5 transition">Terapkan</button>
         @if (request('user') || request('type') || request('from') || request('to'))
             <a href="{{ route('admin.logs.index') }}" class="text-sm font-medium text-slate-500 hover:text-brand pb-2.5">Reset</a>
         @endif

@@ -83,13 +83,13 @@ new class extends Component
                 class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-9 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 transition">
             <span wire:loading wire:target="q" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">…</span>
         </div>
-        <select wire:model.live="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand">
+        <select wire:model.live="opd" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">Semua OPD</option>
             @foreach ($opds as $opd)
                 <option value="{{ $opd->id }}">{{ $opd->name }}</option>
             @endforeach
         </select>
-        <select wire:model.live="role" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm capitalize focus:outline-none focus:border-brand">
+        <select wire:model.live="role" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm capitalize focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">Semua peran</option>
             @foreach ($roles as $r)
                 <option value="{{ $r }}">{{ ucfirst($r) }}</option>
@@ -169,7 +169,7 @@ new class extends Component
                     <x-admin.empty-row :colspan="6" :filtered="$q !== '' || $opd !== '' || $role !== ''"
                         title="Belum ada pengguna"
                         hint="Tambahkan akun pegawai atau administrator untuk mulai mengatur hak akses.">
-                        <a href="{{ route('admin.users.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-4 py-2 transition">
+                        <a href="{{ route('admin.users.create') }}" class="inline-flex items-center gap-1.5 rounded-lg bg-brand hover:bg-branddark text-white text-sm font-semibold px-5 py-2.5 transition">
                             <span class="material-symbols-outlined" style="font-size:18px">person_add</span> Tambah Pengguna
                         </a>
                     </x-admin.empty-row>
