@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AccessController;
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
+use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -63,6 +64,14 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::get('/aplikasi/{application}/link/{link}/edit', [ApplicationLinkController::class, 'edit'])->name('aplikasi.link.edit');
         Route::put('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'update'])->name('aplikasi.link.update');
         Route::delete('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'destroy'])->name('aplikasi.link.destroy');
+
+        // Manajemen Banner — CRUD dashboard banners
+        Route::get('/banner', [BannerController::class, 'index'])->name('banners.index');
+        Route::get('/banner/create', [BannerController::class, 'create'])->name('banners.create');
+        Route::post('/banner', [BannerController::class, 'store'])->name('banners.store');
+        Route::get('/banner/{banner}/edit', [BannerController::class, 'edit'])->name('banners.edit');
+        Route::put('/banner/{banner}', [BannerController::class, 'update'])->name('banners.update');
+        Route::delete('/banner/{banner}', [BannerController::class, 'destroy'])->name('banners.destroy');
 
         // Manajemen Pengguna — CRUD users (self-protection: no self deactivate/demote/delete)
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
