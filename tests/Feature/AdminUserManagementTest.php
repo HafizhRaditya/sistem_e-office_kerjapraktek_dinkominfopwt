@@ -114,15 +114,26 @@ class AdminUserManagementTest extends TestCase
         $this->assertTrue($admin->fresh()->is_active, 'admin must stay active');
     }
 
-    public function test_admin_cannot_delete_their_own_account(): void
+    /**
+     * Accounts are never deleted, only deactivated (field decision, Dinkominfo):
+     * removing a user cascades into their access grants, visits and questionnaire
+     * clicks, and blanks the user column on their activity log.
+     */
+    public function test_there_is_no_route_to_delete_a_user(): void
     {
-        $admin = $this->admin();
+        $this->assertFalse(
+            \Illuminate\Support\Facades\Route::has('admin.users.destroy'),
+            'route hapus pengguna harus sudah tidak ada'
+        );
 
-        $this->actingAs($admin)
-            ->delete(route('admin.users.destroy', $admin))
-            ->assertSessionHasErrors('user');
+        $user = User::where('nip_nik', '3302010000000002')->firstOrFail();
 
-        $this->assertNotNull(User::find($admin->id), 'admin must still exist');
+        // The URL the old route used must no longer resolve to anything.
+        $this->actingAs($this->admin())
+            ->delete('/admin/pengguna/'.$user->id)
+            ->assertStatus(405);
+
+        $this->assertNotNull(User::find($user->id), 'pengguna harus tetap ada');
     }
 
     public function test_admin_cannot_demote_their_own_role_or_deactivate_via_the_form(): void
@@ -162,36 +173,46 @@ class AdminUserManagementTest extends TestCase
         );
     }
 
-    public function test_a_user_who_created_a_questionnaire_cannot_be_deleted(): void
+    /**
+     * Deactivation is the replacement for deletion, so it must preserve exactly
+     * what deletion used to destroy: access grants, visits, questionnaire clicks
+     * and the user's activity trail all survive, and the account can come back.
+     */
+    public function test_deactivating_a_user_keeps_their_history_and_is_reversible(): void
     {
-        // ADMIN001 is the seeded questionnaire's created_by (FK is ON DELETE RESTRICT).
-        // Act as a *different* admin so the self-guard is not what blocks it.
-        $this->actingAs($this->admin())->post(route('admin.users.store'), $this->payload([
-            'name' => 'Uji Admin Kedua',
-            'nip_nik' => 'UJIADM',
-            'role' => 'admin',
-        ]));
-        $secondAdmin = User::where('nip_nik', 'UJIADM')->firstOrFail();
-        $target = $this->admin();
+        $siti = User::where('nip_nik', '3302010000000002')->firstOrFail();
 
-        $this->assertTrue(DB::table('questionnaires')->where('created_by', $target->id)->exists());
-
-        $this->actingAs($secondAdmin)
-            ->delete(route('admin.users.destroy', $target))
-            ->assertSessionHasErrors('user');
-
-        $this->assertNotNull(User::find($target->id), 'questionnaire creator must not be deleted');
-    }
-
-    public function test_admin_can_delete_a_normal_user(): void
-    {
-        $this->actingAs($this->admin())->post(route('admin.users.store'), $this->payload(['nip_nik' => 'UJIDEL']));
-        $user = User::where('nip_nik', 'UJIDEL')->firstOrFail();
+        $grantsBefore = DB::table('application_access')->where('user_id', $siti->id)->count();
+        $this->assertGreaterThan(0, $grantsBefore, 'prasyarat: pengguna uji harus punya hak akses');
+        $logsBefore = DB::table('activity_logs')->where('user_id', $siti->id)->count();
 
         $this->actingAs($this->admin())
-            ->delete(route('admin.users.destroy', $user))
-            ->assertRedirect(route('admin.users.index'));
+            ->patch(route('admin.users.status', $siti))
+            ->assertSessionHasNoErrors();
 
-        $this->assertNull(User::where('nip_nik', 'UJIDEL')->first());
+        $this->assertFalse($siti->fresh()->is_active);
+
+        // Nothing was cascaded away.
+        $this->assertSame($grantsBefore, DB::table('application_access')->where('user_id', $siti->id)->count());
+        $this->assertSame($logsBefore, DB::table('activity_logs')->where('user_id', $siti->id)->count());
+
+        // Reactivating restores the account with its grants intact.
+        $this->actingAs($this->admin())->patch(route('admin.users.status', $siti));
+
+        $this->assertTrue($siti->fresh()->is_active);
+        $this->assertSame($grantsBefore, DB::table('application_access')->where('user_id', $siti->id)->count());
+    }
+
+    public function test_the_edit_page_offers_deactivation_instead_of_deletion(): void
+    {
+        $siti = User::where('nip_nik', '3302010000000002')->firstOrFail();
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('admin.users.edit', $siti))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Nonaktifkan Akun', $html);
+        $this->assertStringNotContainsString('Hapus Pengguna', $html);
     }
 }

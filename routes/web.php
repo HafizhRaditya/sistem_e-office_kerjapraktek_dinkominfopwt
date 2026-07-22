@@ -60,14 +60,14 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::post('/aplikasi', [ApplicationController::class, 'store'])->name('aplikasi.store');
         Route::get('/aplikasi/{application}/edit', [ApplicationController::class, 'edit'])->name('aplikasi.edit');
         Route::put('/aplikasi/{application}', [ApplicationController::class, 'update'])->name('aplikasi.update');
-        Route::delete('/aplikasi/{application}', [ApplicationController::class, 'destroy'])->name('aplikasi.destroy');
+        // No destroy route: applications are retired by setting is_active = false.
 
         // Manajemen Tautan Aplikasi — CRUD application_links (nested)
         Route::get('/aplikasi/{application}/link/create', [ApplicationLinkController::class, 'create'])->name('aplikasi.link.create');
         Route::post('/aplikasi/{application}/link', [ApplicationLinkController::class, 'store'])->name('aplikasi.link.store');
         Route::get('/aplikasi/{application}/link/{link}/edit', [ApplicationLinkController::class, 'edit'])->name('aplikasi.link.edit');
         Route::put('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'update'])->name('aplikasi.link.update');
-        Route::delete('/aplikasi/{application}/link/{link}', [ApplicationLinkController::class, 'destroy'])->name('aplikasi.link.destroy');
+        // No destroy route: links are retired by setting is_active = false.
 
         // Manajemen Banner — CRUD dashboard banners
         Route::get('/banner', [BannerController::class, 'index'])->name('banners.index');
@@ -85,7 +85,7 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::put('/kuisioner/{questionnaire}', [AdminQuestionnaireController::class, 'update'])->name('questionnaires.update');
         Route::delete('/kuisioner/{questionnaire}', [AdminQuestionnaireController::class, 'destroy'])->name('questionnaires.destroy');
 
-        // Manajemen Pengguna — CRUD users (self-protection: no self deactivate/demote/delete)
+        // Manajemen Pengguna — users (self-protection: no self deactivate/demote)
         Route::get('/pengguna', [UserController::class, 'index'])->name('users.index');
         Route::get('/pengguna/create', [UserController::class, 'create'])->name('users.create');
         Route::post('/pengguna', [UserController::class, 'store'])->name('users.store');
@@ -93,7 +93,7 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::put('/pengguna/{user}', [UserController::class, 'update'])->name('users.update');
         Route::patch('/pengguna/{user}/status', [UserController::class, 'status'])->name('users.status');
         Route::put('/pengguna/{user}/reset-sandi', [UserController::class, 'resetPassword'])->name('users.password');
-        Route::delete('/pengguna/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        // No destroy route: accounts are retired by setting is_active = false.
 
         // Log Aktivitas — read-only viewer (FR-A12)
         Route::get('/log-aktivitas', [ActivityLogController::class, 'index'])->name('logs.index');

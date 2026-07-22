@@ -9,8 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin — Manajemen Tautan Aplikasi (CRUD `application_links`), nested under an
+ * Admin — Manajemen Tautan Aplikasi (`application_links`), nested under an
  * application. Enforces UNIQUE(application_id, label) with an app-layer message.
+ *
+ * Links are never deleted, only deactivated via is_active. Deleting one blanks
+ * application_link_id on its visits, so the dashboard module's per-button recap
+ * silently loses those rows' identity. An inactive link is already refused at
+ * launch (see LaunchController), so deactivation covers the same need without
+ * the data loss (field decision, Dinkominfo).
  */
 class ApplicationLinkController extends Controller
 {
@@ -43,16 +49,6 @@ class ApplicationLinkController extends Controller
         return redirect()
             ->route('admin.aplikasi.edit', $application)
             ->with('status', 'Tautan diperbarui.');
-    }
-
-    public function destroy(Application $application, ApplicationLink $link)
-    {
-        $this->ensureOwned($application, $link);
-        $link->delete();
-
-        return redirect()
-            ->route('admin.aplikasi.edit', $application)
-            ->with('status', 'Tautan dihapus.');
     }
 
     private function ensureOwned(Application $application, ApplicationLink $link): void

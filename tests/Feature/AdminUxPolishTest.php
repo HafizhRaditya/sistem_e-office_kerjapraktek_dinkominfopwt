@@ -119,34 +119,60 @@ class AdminUxPolishTest extends TestCase
 
     // ---------------------------------------------- konfirmasi aksi destruktif
 
-    public function test_destructive_actions_ask_for_confirmation(): void
+    /**
+     * Deletion was withdrawn from this module, so the actions needing a prompt
+     * are now deactivation and password reset — both consequential, neither
+     * permanent.
+     */
+    public function test_consequential_actions_ask_for_confirmation(): void
     {
-        $app = Application::where('slug', 'banyumas-smart-city')->firstOrFail();
         $pegawai = User::where('nip_nik', '3302010000000002')->firstOrFail();
 
-        // Hapus aplikasi + hapus tautan (halaman Ubah Aplikasi)
-        $this->actingAs($this->admin())
-            ->get(route('admin.aplikasi.edit', $app))
-            ->assertOk()
-            ->assertSee('return confirm(', false)
-            ->assertSee('Hapus aplikasi', false);
-
-        // Hapus pengguna + reset sandi (halaman Ubah Pengguna)
+        // Nonaktifkan akun + reset sandi (halaman Ubah Pengguna)
         $html = $this->actingAs($this->admin())
             ->get(route('admin.users.edit', $pegawai))
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('Hapus pengguna', $html);
+        $this->assertStringContainsString('Nonaktifkan Akun', $html);
         $this->assertStringContainsString('Reset kata sandi', $html);
         $this->assertSame(2, substr_count($html, 'return confirm('),
-            'halaman Ubah Pengguna harus mengonfirmasi dua aksi: hapus pengguna dan reset sandi');
+            'halaman Ubah Pengguna harus mengonfirmasi dua aksi: nonaktifkan akun dan reset sandi');
 
         // Aktif/nonaktif akun (daftar pengguna)
         $this->actingAs($this->admin())
             ->get(route('admin.users.index'))
             ->assertOk()
             ->assertSee('return confirm(', false);
+    }
+
+    /**
+     * The counterpart: the pages that used to carry a delete button must no
+     * longer offer one, so the withdrawal cannot be quietly reverted.
+     */
+    public function test_no_page_offers_permanent_deletion_in_this_module(): void
+    {
+        $app = Application::where('slug', 'banyumas-smart-city')->firstOrFail();
+        $link = $app->links()->orderBy('id')->firstOrFail();
+        $pegawai = User::where('nip_nik', '3302010000000002')->firstOrFail();
+
+        $pages = [
+            'Ubah Aplikasi' => route('admin.aplikasi.edit', $app),
+            'Ubah Tautan' => route('admin.aplikasi.link.edit', [$app, $link]),
+            'Ubah Pengguna' => route('admin.users.edit', $pegawai),
+        ];
+
+        foreach ($pages as $screen => $url) {
+            $html = $this->actingAs($this->admin())->get($url)->assertOk()->getContent();
+
+            foreach (['Hapus Aplikasi', 'Hapus Tautan', 'Hapus Pengguna'] as $label) {
+                $this->assertStringNotContainsString($label, $html,
+                    "\"{$screen}\" tidak boleh lagi menawarkan \"{$label}\"");
+            }
+
+            $this->assertStringContainsString('Status', $html,
+                "\"{$screen}\" harus menjelaskan status aktif/nonaktif sebagai gantinya");
+        }
     }
 
     // ------------------------------------------------------------ empty state
