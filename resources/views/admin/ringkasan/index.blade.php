@@ -154,7 +154,7 @@
 
     {{-- ============ Login terbaru ============ --}}
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <div class="flex items-center justify-between gap-3 px-6 py-5">
+        <div class="flex items-center justify-between gap-3 px-6 py-6">
             <h2 class="text-base font-semibold">{{ count($recentLogins) }} Login Terakhir</h2>
             <a href="{{ route('admin.logs.index') }}" class="text-xs font-medium text-slate-500 hover:text-brand">Lihat semua aktivitas →</a>
         </div>
