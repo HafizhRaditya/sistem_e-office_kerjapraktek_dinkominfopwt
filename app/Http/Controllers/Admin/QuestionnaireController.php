@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Questionnaire;
 use App\Models\QuestionnaireResponse;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -18,6 +21,13 @@ use Illuminate\Support\Facades\Storage;
  */
 class QuestionnaireController extends Controller
 {
+    private const AUDIT_FIELDS = [
+        'title', 'description', 'banner_image', 'target_url', 'is_active',
+        'starts_at', 'ends_at', 'sort_order',
+    ];
+
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function index(Request $request)
     {
         $search = trim((string) $request->query('search'));
@@ -77,6 +87,14 @@ class QuestionnaireController extends Controller
 
         $questionnaire = Questionnaire::create($data);
 
+        $this->activityLogger->record(
+            $request,
+            ActivityType::QUESTIONNAIRE_CREATED,
+            "Membuat kuisioner \"{$questionnaire->title}\".",
+            subject: $questionnaire,
+            properties: ['after' => $questionnaire->only(self::AUDIT_FIELDS)],
+        );
+
         return redirect()
             ->route('admin.questionnaires.edit', $questionnaire)
             ->with('status', "Kuisioner \"{$questionnaire->title}\" berhasil ditambahkan.");
@@ -91,6 +109,7 @@ class QuestionnaireController extends Controller
 
     public function update(Request $request, Questionnaire $questionnaire)
     {
+        $before = $questionnaire->only(self::AUDIT_FIELDS);
         $data = $this->validateData($request);
         $data['banner_image'] = $this->resolveImagePath(
             $request,
@@ -100,13 +119,24 @@ class QuestionnaireController extends Controller
         unset($data['image'], $data['remove_image']);
 
         $questionnaire->update($data);
+        $changes = $this->activityLogger->changes($before, $questionnaire->fresh()->only(self::AUDIT_FIELDS));
+
+        if ($this->activityLogger->hasChanges($changes)) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::QUESTIONNAIRE_UPDATED,
+                "Memperbarui kuisioner \"{$questionnaire->title}\".",
+                subject: $questionnaire,
+                properties: $changes,
+            );
+        }
 
         return redirect()
             ->route('admin.questionnaires.edit', $questionnaire)
             ->with('status', 'Kuisioner berhasil diperbarui.');
     }
 
-    public function destroy(Questionnaire $questionnaire)
+    public function destroy(Request $request, Questionnaire $questionnaire)
     {
         $responsesCount = $questionnaire->responses()->count();
 
@@ -114,17 +144,30 @@ class QuestionnaireController extends Controller
             return redirect()
                 ->route('admin.questionnaires.index')
                 ->withErrors([
-                    'questionnaire' => "Kuisioner \"{$questionnaire->title}\" tidak dapat dihapus karena sudah memiliki {$responsesCount} respons. Nonaktifkan kuisioner untuk mempertahankan riwayat statistik.",
+                    'questionnaire' => 'Kuisioner "'.$questionnaire->title.'" tidak dapat dihapus karena sudah memiliki '.$responsesCount.' respons. Nonaktifkan kuisioner untuk mempertahankan riwayat statistik.',
                 ]);
         }
 
         $title = $questionnaire->title;
-        $this->deleteManagedImage($questionnaire->banner_image);
-        $questionnaire->delete();
+        $imagePath = $questionnaire->banner_image;
+
+        DB::transaction(function () use ($request, $questionnaire): void {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::QUESTIONNAIRE_DELETED,
+                'Menghapus kuisioner "'.$questionnaire->title.'".',
+                subject: $questionnaire,
+                properties: ['before' => $questionnaire->only(self::AUDIT_FIELDS)],
+            );
+
+            $questionnaire->delete();
+        });
+
+        $this->deleteManagedImage($imagePath);
 
         return redirect()
             ->route('admin.questionnaires.index')
-            ->with('status', "Kuisioner \"{$title}\" berhasil dihapus.");
+            ->with('status', 'Kuisioner "'.$title.'" berhasil dihapus.');
     }
 
     public function statistics(Request $request)

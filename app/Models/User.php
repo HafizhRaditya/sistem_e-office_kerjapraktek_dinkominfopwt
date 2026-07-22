@@ -70,9 +70,16 @@ class User extends Authenticatable
         return $this->hasMany(Banner::class, 'created_by');
     }
 
+    /** Activity entries performed by this user. */
+    public function performedActivityLogs(): HasMany
+    {
+        return $this->hasMany(ActivityLog::class, 'user_id');
+    }
+
+    /** Backward-compatible alias; prefer performedActivityLogs(). */
     public function activityLogs(): HasMany
     {
-        return $this->hasMany(ActivityLog::class);
+        return $this->performedActivityLogs();
     }
 
     public function isAdmin(): bool

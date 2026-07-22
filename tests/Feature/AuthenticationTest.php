@@ -75,10 +75,12 @@ class AuthenticationTest extends TestCase
         // Kredensial salah tidak boleh membuat sesi.
         $this->assertGuest();
 
-        // FR-A12: the attempt is recorded, and attributed to the real user.
+        // FR-A12: the attempted account is the subject; the actor is unknown because authentication failed.
         $this->assertSame($before + 1, ActivityLog::where('activity_type', 'login_failed')->count());
         $this->assertDatabaseHas('activity_logs', [
-            'user_id' => $siti->id,
+            'user_id' => null,
+            'subject_type' => 'user',
+            'subject_id' => $siti->id,
             'activity_type' => 'login_failed',
         ]);
     }
@@ -99,6 +101,8 @@ class AuthenticationTest extends TestCase
         // Logged with a null user_id, since no account matched.
         $this->assertDatabaseHas('activity_logs', [
             'user_id' => null,
+            'subject_type' => 'login_identity',
+            'subject_label' => '9999999999999999',
             'activity_type' => 'login_failed',
         ]);
     }
@@ -170,7 +174,9 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
 
         $this->assertDatabaseHas('activity_logs', [
-            'user_id' => $siti->id,
+            'user_id' => null,
+            'subject_type' => 'user',
+            'subject_id' => $siti->id,
             'activity_type' => 'login_failed',
         ]);
 

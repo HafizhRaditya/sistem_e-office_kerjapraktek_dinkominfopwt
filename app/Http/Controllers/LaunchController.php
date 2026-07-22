@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\ApplicationVisit;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 
 /**
@@ -16,23 +17,33 @@ use Illuminate\Http\Request;
  */
 class LaunchController extends Controller
 {
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function launch(Request $request, Application $application, ?string $link = null)
     {
         $user = $request->user();
 
         // 1. Access enforcement (FR-A10) — 403, never redirect.
         if (! $user->canAccessApp($application)) {
-            $this->log($request, 'access_denied', $user->id, $application->id, 'Akses ditolak ke '.$application->name.'.');
+            $this->activityLogger->record(
+                $request,
+                ActivityType::ACCESS_DENIED,
+                'Akses ditolak ke '.$application->name.'.',
+                subject: $application,
+            );
 
             abort(403, 'Anda tidak memiliki akses ke aplikasi ini.');
         }
 
         // 2. Availability guard — an inactive application is unavailable to
         //    EVERYONE, admin included (is_active = availability, not permission).
-        //    Admin toggles this flag from the admin panel; it is not launched.
-        //    No visit is recorded for a rejected launch.
         if (! $application->is_active) {
-            $this->log($request, 'access_denied', $user->id, $application->id, 'Peluncuran ditolak: aplikasi '.$application->name.' nonaktif.');
+            $this->activityLogger->record(
+                $request,
+                ActivityType::ACCESS_DENIED,
+                'Peluncuran ditolak: aplikasi '.$application->name.' nonaktif.',
+                subject: $application,
+            );
 
             abort(403, 'Aplikasi ini sedang tidak aktif.');
         }
@@ -47,18 +58,20 @@ class LaunchController extends Controller
             abort(404);
         }
 
-        // 4. Availability guard for the specific link — an explicitly requested
-        //    inactive link is rejected (the fallback above already skips inactive
-        //    links, so this only triggers for an explicit {link} id). No visit.
+        // 4. Availability guard for the specific link.
         if (! $applicationLink->is_active) {
-            $this->log($request, 'access_denied', $user->id, $application->id, 'Peluncuran ditolak: tautan '.$applicationLink->label.' pada '.$application->name.' nonaktif.');
+            $this->activityLogger->record(
+                $request,
+                ActivityType::ACCESS_DENIED,
+                'Peluncuran ditolak: tautan '.$applicationLink->label.' pada '.$application->name.' nonaktif.',
+                subject: $applicationLink,
+                applicationId: $application->id,
+            );
 
             abort(403, 'Tautan aplikasi ini sedang tidak aktif.');
         }
 
-        // 5. Record the visit idempotently: 1x per (link + user + day). The DB
-        //    unique index uq_visit_daily is the ultimate guard; firstOrCreate
-        //    avoids a duplicate row for repeat clicks the same day.
+        // 5. Record the visit idempotently: 1x per (link + user + day).
         ApplicationVisit::firstOrCreate([
             'application_link_id' => $applicationLink->id,
             'user_id' => $user->id,
@@ -69,22 +82,16 @@ class LaunchController extends Controller
         ]);
 
         // 6. Audit trail (FR-A12 / FR-D04).
-        $this->log($request, 'app_launched', $user->id, $application->id,
-            'Membuka '.$application->name.' ('.$applicationLink->label.').');
+        $this->activityLogger->record(
+            $request,
+            ActivityType::APP_LAUNCHED,
+            'Membuka '.$application->name.' ('.$applicationLink->label.').',
+            subject: $applicationLink,
+            properties: ['application_name' => $application->name],
+            applicationId: $application->id,
+        );
 
-        // 7. Redirect out to the target application (opened in a new tab by the UI).
+        // 7. Redirect out to the target application.
         return redirect()->away($applicationLink->url);
-    }
-
-    private function log(Request $request, string $type, ?int $userId, ?int $applicationId, string $description): void
-    {
-        ActivityLog::create([
-            'user_id' => $userId,
-            'application_id' => $applicationId,
-            'activity_type' => $type,
-            'description' => $description,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
     }
 }

@@ -48,12 +48,12 @@ class AdminActivityLogTest extends TestCase
         }
     }
 
-    public function test_user_filter_narrows_the_result(): void
+    public function test_actor_filter_narrows_the_result(): void
     {
         $budi = User::where('nip_nik', '3302010000000001')->firstOrFail();
 
         $response = $this->actingAs($this->admin())
-            ->get(route('admin.logs.index', ['user' => $budi->id]))
+            ->get(route('admin.logs.index', ['actor' => $budi->id]))
             ->assertOk();
 
         foreach ($response->viewData('logs') as $log) {
