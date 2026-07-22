@@ -7,6 +7,7 @@ use App\Models\Opd;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /**
@@ -171,6 +172,76 @@ class AdminUserManagementTest extends TestCase
             ActivityLog::where('user_id', $user->id)->where('activity_type', 'password_changed')->exists(),
             'password reset must be recorded in activity_logs'
         );
+    }
+
+    /**
+     * Self-service password recovery is deferred, so admin reset is the only way
+     * back in for a locked-out employee. Proving the hash changed is not enough —
+     * this drives the real /login form to show the employee can actually get in.
+     */
+    public function test_a_user_can_log_in_with_the_password_the_admin_reset(): void
+    {
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true], 200)]);
+
+        $this->actingAs($this->admin())->post(route('admin.users.store'), $this->payload(['nip_nik' => 'UJIRESET']));
+        $user = User::where('nip_nik', 'UJIRESET')->firstOrFail();
+
+        $newPassword = 'SandiReset9';
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.users.password', $user), [
+                'password' => $newPassword,
+                'password_confirmation' => $newPassword,
+            ])
+            ->assertSessionHasNoErrors();
+
+        // End to end: log out of the admin session, then sign in as the employee
+        // through the real login form using the password the admin just set.
+        $this->post('/logout');
+        $this->assertGuest();
+
+        $this->post('/login', [
+            'nip_nik' => 'UJIRESET',
+            'password' => $newPassword,
+            'cf-turnstile-response' => 'dummy-token-for-test',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($user->fresh());
+    }
+
+    /**
+     * This form sets a password without asking for the old one. That is correct
+     * when helping someone else, but for your own account it would bypass the
+     * current-password check on /ubah-sandi.
+     */
+    public function test_admin_cannot_reset_their_own_password_here(): void
+    {
+        $admin = $this->admin();
+        $hashBefore = $admin->password;
+
+        $this->actingAs($admin)
+            ->from(route('admin.users.edit', $admin))
+            ->put(route('admin.users.password', $admin), [
+                'password' => 'SandiBaru9',
+                'password_confirmation' => 'SandiBaru9',
+            ])
+            ->assertSessionHasErrors('password');
+
+        $this->assertSame($hashBefore, $admin->fresh()->password, 'sandi admin tidak boleh berubah');
+    }
+
+    public function test_the_reset_form_is_hidden_on_your_own_account(): void
+    {
+        $admin = $this->admin();
+
+        // Own account: pointed at /ubah-sandi instead of being offered the form.
+        $ownPage = $this->actingAs($admin)->get(route('admin.users.edit', $admin))->assertOk()->getContent();
+        $this->assertStringContainsString(route('password.edit'), $ownPage);
+        $this->assertStringNotContainsString('name="password_confirmation"', $ownPage);
+
+        // Someone else's account: the form is there as usual.
+        $otherPage = $this->actingAs($admin)->get(route('admin.users.edit', $this->pegawai()))->assertOk()->getContent();
+        $this->assertStringContainsString('name="password_confirmation"', $otherPage);
     }
 
     /**
