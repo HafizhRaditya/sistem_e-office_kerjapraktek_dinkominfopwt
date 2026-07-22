@@ -104,6 +104,16 @@ class UserController extends Controller
 
     public function resetPassword(Request $request, User $user)
     {
+        // Self-protection: this form sets a new password without asking for the
+        // old one, which is right for helping someone else but wrong for your own
+        // account. /ubah-sandi is the path for that, and it requires the current
+        // password — routing self-resets there keeps that check from being bypassed.
+        if ($user->is($request->user())) {
+            return back()->withErrors([
+                'password' => 'Anda tidak dapat mereset kata sandi akun sendiri di sini. Gunakan menu Ubah Sandi, yang meminta kata sandi lama.',
+            ]);
+        }
+
         $request->validate(['password' => self::PASSWORD_RULES], self::PASSWORD_MESSAGES);
 
         $user->update(['password' => $request->input('password')]);

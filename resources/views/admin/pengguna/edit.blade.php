@@ -33,6 +33,16 @@
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <h2 class="text-base font-semibold">Reset Kata Sandi</h2>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Menetapkan kata sandi baru untuk pengguna ini. Aktivitas ini dicatat pada log.</p>
+
+        @if ($isSelf)
+            {{-- Resetting your own password here would skip the old-password check
+                 that /ubah-sandi enforces, so the form is not offered. --}}
+            <p class="mt-4 text-sm font-medium text-slate-400">
+                Untuk akun sendiri, gunakan menu
+                <a href="{{ route('password.edit') }}" class="text-brand hover:underline">Ubah Sandi</a>
+                — kata sandi lama akan diminta.
+            </p>
+        @else
         <form method="POST" action="{{ route('admin.users.password', $user) }}" class="mt-4 grid sm:grid-cols-2 gap-5"
             onsubmit="return confirm('Reset kata sandi &quot;{{ $user->name }}&quot;? Sandi lama langsung tidak berlaku dan pengguna harus memakai sandi baru ini.');">
             @csrf
@@ -52,6 +62,7 @@
                 <button type="submit" class="rounded-lg border border-brand text-brand hover:bg-brand hover:text-white text-sm font-semibold px-4 py-2 transition">Reset Kata Sandi</button>
             </div>
         </form>
+        @endif
     </div>
 
     {{-- Status akun: pengganti aksi hapus (akun tidak pernah dihapus permanen) --}}

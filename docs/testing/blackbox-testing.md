@@ -9,12 +9,12 @@
 
 | Hal | Keterangan |
 |---|---|
-| Tanggal uji | 21 Juli 2026 |
-| Commit diuji | `08c83c6` (branch `main`) |
+| Tanggal uji | 22 Juli 2026 |
+| Commit diuji | `1a11ad3` + branch `feat/reset-password-polish` |
 | Stack | Laravel 13 · PHP 8.4.12 · PostgreSQL 18.4 |
 | Basis data uji | `sistem_eoffice_test` (terpisah dari `sistem_eoffice` pengembangan) |
 | Perintah | `php artisan test` |
-| Hasil suite | **103 test lolos, 0 gagal, 529 assertion** |
+| Hasil suite | **116 test lolos, 0 gagal, 596 assertion** |
 
 Akun uji dari seeder (`EofficeV21Seeder`), seluruh sandi `password`:
 
@@ -46,7 +46,7 @@ diisi berdasarkan keluaran `php artisan test` yang nyata, bukan pengamatan manua
 
 ---
 
-## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-12)
+## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-16)
 
 Seluruh baris pada tabel ini **terverifikasi otomatis**.
 
@@ -66,6 +66,10 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
 | **AUT-10b** | Ubah sandi valid, terpakai untuk login | Sandi lama benar + sandi baru `rahasia123` + konfirmasi cocok → **Simpan** → logout → login memakai sandi baru | Berhasil, flash "Kata sandi berhasil diubah.", dicatat `password_changed`, sandi lama tidak berlaku lagi, sandi baru dapat dipakai masuk | Sesuai — login ulang dengan sandi baru berhasil ke `/dashboard`; sandi tersimpan ter-hash, bukan teks polos | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
 | **AUT-11** | Logout mengakhiri sesi | Login sebagai pegawai → kirim `POST /logout` → buka kembali `/dashboard` | Sesi di-*invalidate*, token CSRF diregenerasi, dicatat `logout` beratribut pengguna tersebut, dialihkan ke `/login`; `/dashboard` kembali meminta login | Sesuai — kembali menjadi tamu, baris `logout` tercatat, `/dashboard` dialihkan ke `/login` | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
 | **AUT-12** | Halaman ubah sandi tertutup bagi tamu | Tanpa sesi, buka `/ubah-sandi` dan kirim `PUT` ke `/ubah-sandi` | Keduanya dialihkan ke `/login` | Sesuai | ✅ Lolos (otomatis)<br>`ChangePasswordTest` |
+| **AUT-13** | Admin mereset kata sandi pegawai | Panel Admin → Manajemen Pengguna → **Kelola** pada pegawai → isi *Kata sandi baru* + *Ulangi* → **Reset Kata Sandi** (muncul konfirmasi) | Sandi tersimpan ter-hash (bukan teks polos), dicatat `password_changed` dengan keterangan nama admin pelakunya, muncul pesan "Kata sandi … berhasil direset." | Sesuai — `Hash::check` cocok, baris log tercatat | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
+| **AUT-14** | Pegawai dapat masuk memakai sandi hasil reset admin | Lanjutan AUT-13: keluar dari sesi admin → buka `/login` → masuk sebagai pegawai itu dengan sandi baru | Login berhasil, diarahkan ke `/dashboard` | Sesuai — diuji ujung-ke-ujung lewat form `/login` sungguhan, bukan sekadar pemeriksaan hash | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
+| **AUT-15** | Admin ditolak mereset kata sandi akunnya sendiri | Panel Admin → **Kelola** pada akun sendiri → kirim `PUT` ke `/admin/pengguna/{id}/reset-sandi` | Ditolak: "Anda tidak dapat mereset kata sandi akun sendiri di sini. Gunakan menu Ubah Sandi, yang meminta kata sandi lama." Hash sandi admin tidak berubah | Sesuai — hash sebelum dan sesudah identik | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
+| **AUT-16** | Formulir reset disembunyikan pada akun sendiri | Buka halaman Ubah Pengguna untuk akun sendiri, lalu untuk akun pegawai lain | Akun sendiri: formulir tidak ditampilkan, diganti tautan ke **Ubah Sandi**. Akun lain: formulir tampil normal | Sesuai — kolom sandi absen pada halaman akun sendiri, hadir pada akun lain | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
 
 ---
 
@@ -112,20 +116,31 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
    menutup klaim: *panel menulis baris X* **dan** *baris X langsung berlaku dalam
    sesi berjalan*.
 
-4. **Cakupan pengujian otomatis: 100%.** Seluruh **28 skenario** pada dokumen ini
-   (AUT-01…12 dan RBAC-01…14) terverifikasi oleh test otomatis. Kesenjangan yang
+4. **Cakupan pengujian otomatis: 100%.** Seluruh **32 skenario** pada dokumen ini
+   (AUT-01…16 dan RBAC-01…14) terverifikasi oleh test otomatis. Kesenjangan yang
    sempat ada — jalur *kegagalan* login (sandi salah, NIP tak dikenal, field kosong,
    rate limit, akun nonaktif), logout, dan seluruh fitur ubah sandi — ditutup dengan
    menambahkan `AuthenticationTest` (7 test) dan `ChangePasswordTest` (6 test).
-   Jumlah test suite naik dari 90 menjadi **103**.
+   Cakupan reset kata sandi oleh admin (AUT-13…16) menyusul kemudian. Jumlah test
+   suite naik dari 90 menjadi **116**.
 
-5. **Pesan penolakan login sengaja dibuat seragam.** AUT-03 (sandi salah) dan AUT-04
+5. **Pemulihan kata sandi mandiri ("lupa password") sengaja ditunda** atas arahan
+   pembimbing lapangan; untuk sementara pemulihan ditempuh lewat admin (AUT-13/14).
+   Karena itu halaman login **tidak** menyediakan tautan "Lupa password" — yang ada
+   hanya keterangan "Lupa kata sandi? Hubungi admin OPD Anda.", bukan tautan mati.
+
+6. **Reset oleh admin dan ubah sandi mandiri sengaja dipisah.** Formulir reset di
+   panel tidak meminta kata sandi lama — wajar karena admin sedang menolong orang
+   lain. Untuk akun sendiri jalur itu ditutup (AUT-15/16) agar pemeriksaan kata
+   sandi lama pada `/ubah-sandi` (AUT-09) tidak dapat dilewati.
+
+7. **Pesan penolakan login sengaja dibuat seragam.** AUT-03 (sandi salah) dan AUT-04
    (NIP tidak terdaftar) mengembalikan kalimat yang **sama persis**. Ini keputusan
    keamanan: bila pesannya dibedakan, form login dapat dipakai untuk menyimpulkan
    NIP/NIK mana yang terdaftar di sistem (*user enumeration*). Test AUT-04 menegakkan
    properti ini, sehingga perubahan yang tidak sengaja membedakannya akan tertangkap.
 
-5. **Turnstile pada pengujian.** Verifikasi Cloudflare Turnstile aktif di lingkungan
+8. **Turnstile pada pengujian.** Verifikasi Cloudflare Turnstile aktif di lingkungan
    pengembangan. Pada pengujian otomatis, endpoint verifikasinya dipalsukan
    (`Http::fake`) dan `phpunit.xml` memakai kunci placeholder, sehingga seluruh alur
    login tetap dapat diuji tanpa memanggil layanan luar.

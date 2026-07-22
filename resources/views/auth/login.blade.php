@@ -63,9 +63,12 @@
                 </div>
 
                 <div>
-                    <div class="flex justify-between items-baseline mb-1.5">
+                    {{-- Self-service password recovery is deferred (field decision,
+                         Dinkominfo): resets go through an admin for now. This is plain
+                         text, not a link, so nobody clicks a dead end. --}}
+                    <div class="flex justify-between items-baseline gap-3 mb-1.5">
                         <label for="password" class="block text-sm font-medium text-slate-700">Kata sandi</label>
-                        <a href="#" class="text-xs font-medium text-brand hover:underline">Lupa password?</a>
+                        <span class="text-xs text-slate-500">Lupa kata sandi? Hubungi admin OPD Anda.</span>
                     </div>
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">lock</span>
