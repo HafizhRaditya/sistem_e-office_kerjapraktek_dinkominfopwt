@@ -148,9 +148,17 @@
                         </td>
                         <td class="max-w-md px-5 py-3 text-slate-600 dark:text-slate-300">
                             <p>{{ $log->description ?? '—' }}</p>
-                            @if ($log->properties)
+                            @php
+                                $hasChanges = isset($log->properties['before'])
+                                    || isset($log->properties['after']);
+                            @endphp
+
+                            @if ($log->properties && $hasChanges)
                                 <details class="mt-2">
-                                    <summary class="cursor-pointer text-xs font-medium text-brand">Detail perubahan</summary>
+                                    <summary class="cursor-pointer text-xs font-medium text-brand">
+                                        Detail perubahan
+                                    </summary>
+
                                     <pre class="mt-2 max-w-md overflow-x-auto whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-[11px] leading-relaxed text-slate-600 dark:bg-slate-950 dark:text-slate-300">{{ json_encode($log->properties, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) }}</pre>
                                 </details>
                             @endif
