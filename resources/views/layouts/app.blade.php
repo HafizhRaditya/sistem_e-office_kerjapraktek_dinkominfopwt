@@ -86,11 +86,38 @@
 <footer class="border-t border-slate-200 dark:border-slate-800 py-8">
     <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
         <p>© {{ date('Y') }} Dinkominfo Kabupaten Banyumas. Seluruh hak cipta dilindungi.</p>
-        <div class="flex gap-5">
-            <a href="#" class="hover:text-brand">Kebijakan privasi</a>
-            <a href="#" class="hover:text-brand">Kontak</a>
-            <a href="#" class="hover:text-brand">Peta situs</a>
+        <div
+            class="flex flex-wrap justify-center gap-x-5 gap-y-2"
+            aria-label="Tautan resmi"
+        >
+            <a
+                href="https://jdih.banyumaskab.go.id/assets/z-jdih/produk_hukum/view/id/553/t/peraturan%2Bmenteri%2Bkomunikasi%2Bdan%2Binformatika%2Bnomor%2B20%2Btahun%2B2016%2Btanggal%2B1%2Bdesember%2B2016.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-brand"
+            >
+                Perlindungan data pribadi
+            </a>
+
+            <a
+                href="https://dinkominfo.banyumaskab.go.id/page/24768/alamat-dan-kontak"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-brand"
+            >
+                Kontak Dinkominfo
+            </a>
+
+            <a
+                href="https://www.banyumaskab.go.id/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:text-brand"
+            >
+                Portal Banyumas
+            </a>
         </div>
+
     </div>
 </footer>
 

@@ -45,6 +45,12 @@ class DashboardViewTest extends TestCase
             ->assertSee('Dapat diakses')
             ->assertSee('Akses terbatas')
             ->assertSee('Kunjungan bulan ini')
-            ->assertSee('Kunjungan tahun ini');
+            ->assertSee('Kunjungan tahun ini')
+            ->assertSee('Perlindungan data pribadi')
+            ->assertSee('Kontak Dinkominfo')
+            ->assertSee('Portal Banyumas')
+            ->assertSee('https://dinkominfo.banyumaskab.go.id/page/24768/alamat-dan-kontak', false)
+            ->assertDontSee('href="#"', false);
+
     }
 }
