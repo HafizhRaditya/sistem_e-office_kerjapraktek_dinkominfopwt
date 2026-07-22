@@ -52,7 +52,7 @@
                 @csrf
 
                 <div>
-                    <label for="nip_nik" class="block text-sm font-medium mb-1.5 text-slate-700">Username</label>
+                    <label for="nip_nik" class="block text-sm font-medium mb-1.5 text-slate-700">NIP/NIK</label>
                     <div class="relative">
                         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">person</span>
                         <input id="nip_nik" name="nip_nik" type="text" value="{{ old('nip_nik') }}" placeholder="NIP atau NIK"
