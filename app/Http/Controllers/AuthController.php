@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityLog;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,8 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     /** Max failed attempts per (nip_nik + IP) within the decay window. */
     private const MAX_ATTEMPTS = 5;
 
@@ -48,7 +51,13 @@ class AuthController extends Controller
         $key = $this->throttleKey($request);
         if (RateLimiter::tooManyAttempts($key, self::MAX_ATTEMPTS)) {
             $seconds = RateLimiter::availableIn($key);
-            $this->log($request, 'login_failed', null, "Login diblokir (rate limit) untuk {$credentials['nip_nik']}.");
+            $this->activityLogger->record(
+                $request,
+                ActivityType::LOGIN_FAILED,
+                "Login diblokir (rate limit) untuk {$credentials['nip_nik']}.",
+                subjectType: 'login_identity',
+                subjectLabel: $credentials['nip_nik'],
+            );
 
             throw ValidationException::withMessages([
                 'nip_nik' => "Terlalu banyak percobaan masuk. Silakan coba lagi dalam {$seconds} detik.",
@@ -68,7 +77,14 @@ class AuthController extends Controller
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
-            $this->log($request, 'login_failed', $user?->id, "Kredensial salah untuk {$credentials['nip_nik']}.");
+            $this->activityLogger->record(
+                $request,
+                ActivityType::LOGIN_FAILED,
+                "Kredensial salah untuk {$credentials['nip_nik']}.",
+                subject: $user,
+                subjectType: $user ? null : 'login_identity',
+                subjectLabel: $user ? null : $credentials['nip_nik'],
+            );
 
             throw ValidationException::withMessages([
                 'nip_nik' => 'NIP/NIK atau kata sandi salah.',
@@ -77,7 +93,12 @@ class AuthController extends Controller
 
         if (! $user->is_active) {
             RateLimiter::hit($key, self::DECAY_SECONDS);
-            $this->log($request, 'login_failed', $user->id, 'Login ditolak: akun nonaktif.');
+            $this->activityLogger->record(
+                $request,
+                ActivityType::LOGIN_FAILED,
+                'Login ditolak: akun nonaktif.',
+                subject: $user,
+            );
 
             throw ValidationException::withMessages([
                 'nip_nik' => 'Akun Anda dinonaktifkan. Hubungi admin OPD.',
@@ -90,7 +111,12 @@ class AuthController extends Controller
         $request->session()->regenerate();
 
         $user->update(['last_login_at' => now()]); // FR-A01
-        $this->log($request, 'login_success', $user->id, 'Login berhasil.');
+        $this->activityLogger->record(
+            $request,
+            ActivityType::LOGIN_SUCCESS,
+            'Login berhasil.',
+            subject: $user,
+        );
 
         // Role-based landing (FR-A01): admin -> admin panel, pegawai -> portal.
         // intended() still wins, so a deep link the user was bounced from is honoured.
@@ -111,8 +137,13 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $userId = Auth::id();
-        $this->log($request, 'logout', $userId, 'Logout.');
+        $user = $request->user();
+        $this->activityLogger->record(
+            $request,
+            ActivityType::LOGOUT,
+            'Logout.',
+            subject: $user,
+        );
 
         Auth::logout();
         $request->session()->invalidate();
@@ -127,21 +158,6 @@ class AuthController extends Controller
     private function throttleKey(Request $request): string
     {
         return Str::lower((string) $request->input('nip_nik')).'|'.$request->ip();
-    }
-
-    /**
-     * Record an activity_logs entry (FR-A12). Event table — created_at is filled
-     * by the DB default.
-     */
-    private function log(Request $request, string $type, ?int $userId, ?string $description = null): void
-    {
-        ActivityLog::create([
-            'user_id' => $userId,
-            'activity_type' => $type,
-            'description' => $description,
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
     }
 
     /**

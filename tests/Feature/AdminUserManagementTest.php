@@ -168,8 +168,12 @@ class AdminUserManagementTest extends TestCase
 
         $this->assertTrue(Hash::check('SandiBaru9', $user->fresh()->password));
         $this->assertTrue(
-            ActivityLog::where('user_id', $user->id)->where('activity_type', 'password_changed')->exists(),
-            'password reset must be recorded in activity_logs'
+            ActivityLog::where('user_id', $this->admin()->id)
+                ->where('subject_type', 'user')
+                ->where('subject_id', $user->id)
+                ->where('activity_type', 'password_reset')
+                ->exists(),
+            'password reset must identify the admin as actor and the user as subject'
         );
     }
 

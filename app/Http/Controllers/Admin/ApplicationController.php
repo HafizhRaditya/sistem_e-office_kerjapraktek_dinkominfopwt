@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\Opd;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -24,6 +26,13 @@ use Illuminate\Validation\Rule;
  */
 class ApplicationController extends Controller
 {
+    private const AUDIT_FIELDS = [
+        'opd_id', 'name', 'slug', 'description', 'app_group', 'category',
+        'is_active', 'is_new', 'sort_order',
+    ];
+
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     private const APP_GROUPS = ['smartcity', 'spbe', 'tools'];
 
     private const CATEGORIES = [
@@ -51,6 +60,14 @@ class ApplicationController extends Controller
         $data = $this->validateData($request);
         $application = Application::create($data);
 
+        $this->activityLogger->record(
+            $request,
+            ActivityType::APPLICATION_CREATED,
+            "Membuat aplikasi \"{$application->name}\".",
+            subject: $application,
+            properties: ['after' => $application->only(self::AUDIT_FIELDS)],
+        );
+
         return redirect()
             ->route('admin.aplikasi.edit', $application)
             ->with('status', "Aplikasi \"{$application->name}\" ditambahkan. Sekarang tambahkan tautannya.");
@@ -65,7 +82,19 @@ class ApplicationController extends Controller
 
     public function update(Request $request, Application $application)
     {
+        $before = $application->only(self::AUDIT_FIELDS);
         $application->update($this->validateData($request, $application));
+        $changes = $this->activityLogger->changes($before, $application->fresh()->only(self::AUDIT_FIELDS));
+
+        if ($this->activityLogger->hasChanges($changes)) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::APPLICATION_UPDATED,
+                "Memperbarui aplikasi \"{$application->name}\".",
+                subject: $application,
+                properties: $changes,
+            );
+        }
 
         return redirect()
             ->route('admin.aplikasi.edit', $application)

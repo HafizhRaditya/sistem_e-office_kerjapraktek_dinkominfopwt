@@ -5,21 +5,21 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationLink;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin — Manajemen Tautan Aplikasi (`application_links`), nested under an
- * application. Enforces UNIQUE(application_id, label) with an app-layer message.
- *
- * Links are never deleted, only deactivated via is_active. Deleting one blanks
- * application_link_id on its visits, so the dashboard module's per-button recap
- * silently loses those rows' identity. An inactive link is already refused at
- * launch (see LaunchController), so deactivation covers the same need without
- * the data loss (field decision, Dinkominfo).
+ * Admin — Manajemen Tautan Aplikasi (`application_links`).
+ * Links are retired through is_active, never permanently deleted.
  */
 class ApplicationLinkController extends Controller
 {
+    private const AUDIT_FIELDS = ['application_id', 'label', 'url', 'is_active', 'sort_order'];
+
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function create(Application $application)
     {
         return view('admin.aplikasi.link.create', ['application' => $application]);
@@ -27,7 +27,19 @@ class ApplicationLinkController extends Controller
 
     public function store(Request $request, Application $application)
     {
-        $application->links()->create($this->validateData($request, $application));
+        $link = $application->links()->create($this->validateData($request, $application));
+
+        $this->activityLogger->record(
+            $request,
+            ActivityType::APPLICATION_LINK_CREATED,
+            "Menambahkan tautan \"{$link->label}\" pada aplikasi \"{$application->name}\".",
+            subject: $link,
+            properties: [
+                'application_name' => $application->name,
+                'after' => $link->only(self::AUDIT_FIELDS),
+            ],
+            applicationId: $application->id,
+        );
 
         return redirect()
             ->route('admin.aplikasi.edit', $application)
@@ -44,7 +56,21 @@ class ApplicationLinkController extends Controller
     public function update(Request $request, Application $application, ApplicationLink $link)
     {
         $this->ensureOwned($application, $link);
+
+        $before = $link->only(self::AUDIT_FIELDS);
         $link->update($this->validateData($request, $application, $link));
+        $changes = $this->activityLogger->changes($before, $link->fresh()->only(self::AUDIT_FIELDS));
+
+        if ($this->activityLogger->hasChanges($changes)) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::APPLICATION_LINK_UPDATED,
+                "Memperbarui tautan \"{$link->label}\" pada aplikasi \"{$application->name}\".",
+                subject: $link,
+                properties: array_merge(['application_name' => $application->name], $changes),
+                applicationId: $application->id,
+            );
+        }
 
         return redirect()
             ->route('admin.aplikasi.edit', $application)

@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityLog;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 
 /**
- * Change password (FR-A06). Requires the current password before changing —
- * this closes a gap in the old system, which let users set a new password
- * without proving the old one.
+ * Change password (FR-A06). Requires the current password before changing.
  */
 class PasswordController extends Controller
 {
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function edit()
     {
         return view('auth.change-password');
@@ -21,7 +22,6 @@ class PasswordController extends Controller
     {
         $request->validate([
             'current_password' => ['required', 'current_password'],
-            // min 8 + must contain letters AND numbers (two regexes share one message)
             'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
         ], [
             'current_password.required' => 'Kata sandi lama wajib diisi.',
@@ -33,18 +33,14 @@ class PasswordController extends Controller
         ]);
 
         $user = $request->user();
-
-        // The `password` attribute is cast to 'hashed', so assigning the plain
-        // value hashes it exactly once.
         $user->update(['password' => $request->input('password')]);
 
-        ActivityLog::create([
-            'user_id' => $user->id,
-            'activity_type' => 'password_changed',
-            'description' => 'Kata sandi berhasil diubah.',
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
+        $this->activityLogger->record(
+            $request,
+            ActivityType::PASSWORD_CHANGED,
+            'Kata sandi berhasil diubah.',
+            subject: $user,
+        );
 
         return redirect()->route('password.edit')->with('status', 'Kata sandi berhasil diubah.');
     }

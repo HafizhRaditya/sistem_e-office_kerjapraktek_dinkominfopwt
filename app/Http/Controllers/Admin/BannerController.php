@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Banner;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -15,6 +18,13 @@ use Illuminate\Support\Facades\Storage;
  */
 class BannerController extends Controller
 {
+    private const AUDIT_FIELDS = [
+        'title', 'description', 'image_path', 'target_url', 'is_active',
+        'starts_at', 'ends_at', 'sort_order',
+    ];
+
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function index(Request $request)
     {
         $search = trim((string) $request->query('search'));
@@ -36,12 +46,8 @@ class BannerController extends Controller
                     ->where(fn ($period) => $period->whereNull('starts_at')->orWhere('starts_at', '<=', $now))
                     ->where(fn ($period) => $period->whereNull('ends_at')->orWhere('ends_at', '>=', $now));
             })
-            ->when($status === 'scheduled', function ($query) use ($now): void {
-                $query->where('is_active', true)->where('starts_at', '>', $now);
-            })
-            ->when($status === 'expired', function ($query) use ($now): void {
-                $query->where('is_active', true)->whereNotNull('ends_at')->where('ends_at', '<', $now);
-            })
+            ->when($status === 'scheduled', fn ($query) => $query->where('is_active', true)->where('starts_at', '>', $now))
+            ->when($status === 'expired', fn ($query) => $query->where('is_active', true)->whereNotNull('ends_at')->where('ends_at', '<', $now))
             ->when($status === 'inactive', fn ($query) => $query->where('is_active', false))
             ->orderBy('sort_order')
             ->orderByDesc('created_at')
@@ -65,6 +71,14 @@ class BannerController extends Controller
 
         $banner = Banner::create($data);
 
+        $this->activityLogger->record(
+            $request,
+            ActivityType::BANNER_CREATED,
+            "Membuat banner \"{$banner->title}\".",
+            subject: $banner,
+            properties: ['after' => $banner->only(self::AUDIT_FIELDS)],
+        );
+
         return redirect()
             ->route('admin.banners.edit', $banner)
             ->with('status', "Banner \"{$banner->title}\" berhasil ditambahkan.");
@@ -79,6 +93,7 @@ class BannerController extends Controller
 
     public function update(Request $request, Banner $banner)
     {
+        $before = $banner->only(self::AUDIT_FIELDS);
         $data = $this->validateData($request);
         $data['image_path'] = $this->resolveImagePath(
             $request,
@@ -88,17 +103,41 @@ class BannerController extends Controller
         unset($data['image'], $data['remove_image']);
 
         $banner->update($data);
+        $changes = $this->activityLogger->changes($before, $banner->fresh()->only(self::AUDIT_FIELDS));
+
+        if ($this->activityLogger->hasChanges($changes)) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::BANNER_UPDATED,
+                "Memperbarui banner \"{$banner->title}\".",
+                subject: $banner,
+                properties: $changes,
+            );
+        }
 
         return redirect()
             ->route('admin.banners.edit', $banner)
             ->with('status', 'Banner berhasil diperbarui.');
     }
 
-    public function destroy(Banner $banner)
+    public function destroy(Request $request, Banner $banner)
     {
         $title = $banner->title;
-        $this->deleteManagedImage($banner->image_path);
-        $banner->delete();
+        $imagePath = $banner->image_path;
+
+        DB::transaction(function () use ($request, $banner): void {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::BANNER_DELETED,
+                "Menghapus banner \"{$banner->title}\".",
+                subject: $banner,
+                properties: ['before' => $banner->only(self::AUDIT_FIELDS)],
+            );
+
+            $banner->delete();
+        });
+
+        $this->deleteManagedImage($imagePath);
 
         return redirect()
             ->route('admin.banners.index')
@@ -185,8 +224,6 @@ class BannerController extends Controller
             return;
         }
 
-        Storage::disk('public')->delete(str_starts_with($path, '/storage/')
-            ? substr($path, strlen('/storage/'))
-            : $path);
+        Storage::disk('public')->delete(substr($path, strlen('/storage/')));
     }
 }

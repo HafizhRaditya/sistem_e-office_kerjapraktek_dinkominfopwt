@@ -7,6 +7,8 @@ use App\Models\Application;
 use App\Models\ApplicationAccess;
 use App\Models\Opd;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\DB;
  */
 class AccessController extends Controller
 {
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     /** Application categories (mirrors the DB CHECK constraint). */
     private const CATEGORIES = [
         'governance', 'economy', 'kinerja', 'gawai', 'rencana', 'uang',
@@ -102,6 +106,29 @@ class AccessController extends Controller
                     ->delete();
             }
         });
+
+        if ($toAdd->isNotEmpty() || $toRemove->isNotEmpty()) {
+            $applications = Application::query()
+                ->whereIn('id', $toAdd->merge($toRemove)->all())
+                ->pluck('name', 'id');
+
+            $this->activityLogger->record(
+                $request,
+                ActivityType::ACCESS_UPDATED,
+                "Memperbarui hak akses pengguna \"{$user->name}\": +{$toAdd->count()} ditambah, -{$toRemove->count()} dicabut.",
+                subject: $user,
+                properties: [
+                    'added' => $toAdd->map(fn (int $id): array => [
+                        'id' => $id,
+                        'name' => $applications->get($id),
+                    ])->values()->all(),
+                    'removed' => $toRemove->map(fn (int $id): array => [
+                        'id' => $id,
+                        'name' => $applications->get($id),
+                    ])->values()->all(),
+                ],
+            );
+        }
 
         // Effective immediately on the next request — can_access reads live rows,
         // so no re-login is required.

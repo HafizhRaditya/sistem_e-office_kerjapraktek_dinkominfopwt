@@ -3,30 +3,28 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ActivityLog;
 use App\Models\Opd;
 use App\Models\User;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
  * Admin — Manajemen Pengguna (`users`).
  *
- * Accounts are never deleted, only deactivated. Removing a user cascades into
- * application_access, application_visits and questionnaire_responses, and blanks
- * the user column on activity_logs — destroying access history and the dashboard
- * module's visit/participation figures along with the account. Deactivation via
- * status() keeps all of that intact and still blocks login, so it is the only
- * removal path offered (field decision, Dinkominfo).
- *
- * Self-protection: an admin may not deactivate or demote their own account —
- * that would lock them (or everyone) out of the admin panel.
+ * Accounts are never deleted, only deactivated, so historical access, visits,
+ * questionnaire responses and activity entries remain intact.
  */
 class UserController extends Controller
 {
     private const ROLES = ['admin', 'pegawai'];
 
-    /** Password policy, same as FR-A06: min 8, must contain letters AND numbers. */
+    private const AUDIT_FIELDS = [
+        'opd_id', 'nip_nik', 'name', 'email', 'role', 'is_active',
+    ];
+
+    /** Password policy, same as FR-A06: min 8, letters AND numbers. */
     private const PASSWORD_RULES = ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'];
 
     private const PASSWORD_MESSAGES = [
@@ -36,11 +34,8 @@ class UserController extends Controller
         'password.regex' => 'Kata sandi harus mengandung huruf dan angka.',
     ];
 
-    /**
-     * The list itself (live search + filters + pagination) is rendered by the
-     * <livewire:admin.user-table> component so searching filters as you type,
-     * while the query stays server-side across the whole dataset.
-     */
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function index()
     {
         return view('admin.pengguna.index');
@@ -54,8 +49,15 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateUser($request);
-        // `password` is cast to 'hashed' on the model, so the plain value is hashed once.
         $user = User::create($data);
+
+        $this->activityLogger->record(
+            $request,
+            ActivityType::USER_CREATED,
+            "Membuat pengguna \"{$user->name}\".",
+            subject: $user,
+            properties: ['after' => $user->only(self::AUDIT_FIELDS)],
+        );
 
         return redirect()
             ->route('admin.users.index')
@@ -76,13 +78,24 @@ class UserController extends Controller
     {
         $data = $this->validateUser($request, $user);
 
-        // Self-protection: ignore any attempt to deactivate or demote yourself.
         if ($user->is($request->user())) {
             $data['is_active'] = true;
             $data['role'] = $user->role;
         }
 
+        $before = $user->only(self::AUDIT_FIELDS);
         $user->update($data);
+        $changes = $this->activityLogger->changes($before, $user->fresh()->only(self::AUDIT_FIELDS));
+
+        if ($this->activityLogger->hasChanges($changes)) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::USER_UPDATED,
+                "Memperbarui data pengguna \"{$user->name}\".",
+                subject: $user,
+                properties: $changes,
+            );
+        }
 
         return redirect()
             ->route('admin.users.edit', $user)
@@ -95,7 +108,24 @@ class UserController extends Controller
             return back()->withErrors(['user' => 'Anda tidak dapat menonaktifkan akun sendiri.']);
         }
 
-        $user->update(['is_active' => ! $user->is_active]);
+        $before = (bool) $user->is_active;
+        $user->update(['is_active' => ! $before]);
+        $user->refresh();
+
+        $type = $user->is_active
+            ? ActivityType::USER_ACTIVATED
+            : ActivityType::USER_DEACTIVATED;
+
+        $this->activityLogger->record(
+            $request,
+            $type,
+            ($user->is_active ? 'Mengaktifkan' : 'Menonaktifkan')." akun \"{$user->name}\".",
+            subject: $user,
+            properties: [
+                'before' => ['is_active' => $before],
+                'after' => ['is_active' => (bool) $user->is_active],
+            ],
+        );
 
         return back()->with('status', $user->is_active
             ? "Akun \"{$user->name}\" diaktifkan."
@@ -108,13 +138,13 @@ class UserController extends Controller
 
         $user->update(['password' => $request->input('password')]);
 
-        ActivityLog::create([
-            'user_id' => $user->id,
-            'activity_type' => 'password_changed',
-            'description' => 'Kata sandi direset oleh admin '.$request->user()->name.'.',
-            'ip_address' => $request->ip(),
-            'user_agent' => $request->userAgent(),
-        ]);
+        // Password values are deliberately never written to the audit trail.
+        $this->activityLogger->record(
+            $request,
+            ActivityType::PASSWORD_RESET,
+            "Mereset kata sandi pengguna \"{$user->name}\".",
+            subject: $user,
+        );
 
         return redirect()
             ->route('admin.users.edit', $user)
@@ -139,7 +169,6 @@ class UserController extends Controller
             'role' => ['required', Rule::in(self::ROLES)],
         ];
 
-        // Password is only set on create; changing it later goes through resetPassword().
         if (! $user) {
             $rules['password'] = self::PASSWORD_RULES;
         }

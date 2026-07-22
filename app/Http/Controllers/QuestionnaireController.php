@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActivityLog;
 use App\Models\Questionnaire;
+use App\Services\ActivityLogger;
+use App\Support\ActivityType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class QuestionnaireController extends Controller
 {
+    public function __construct(private readonly ActivityLogger $activityLogger) {}
+
     public function click(Request $request, Questionnaire $questionnaire)
     {
         $user = $request->user();
@@ -26,14 +29,12 @@ class QuestionnaireController extends Controller
         ]);
 
         if ($inserted === 1) {
-            ActivityLog::create([
-                'user_id' => $user->id,
-                'questionnaire_id' => $questionnaire->id,
-                'activity_type' => 'quiz_clicked',
-                'description' => "Pegawai mengeklik kuisioner: {$questionnaire->title}.",
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
+            $this->activityLogger->record(
+                $request,
+                ActivityType::QUIZ_CLICKED,
+                "Pegawai mengeklik kuisioner: {$questionnaire->title}.",
+                subject: $questionnaire,
+            );
         }
 
         return redirect()->away($questionnaire->target_url);
