@@ -7,14 +7,20 @@ use App\Models\ActivityLog;
 use App\Models\Opd;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin — Manajemen Pengguna (CRUD `users`).
+ * Admin — Manajemen Pengguna (`users`).
  *
- * Self-protection: an admin may not deactivate, demote, or delete their own
- * account — that would lock them (or everyone) out of the admin panel.
+ * Accounts are never deleted, only deactivated. Removing a user cascades into
+ * application_access, application_visits and questionnaire_responses, and blanks
+ * the user column on activity_logs — destroying access history and the dashboard
+ * module's visit/participation figures along with the account. Deactivation via
+ * status() keeps all of that intact and still blocks login, so it is the only
+ * removal path offered (field decision, Dinkominfo).
+ *
+ * Self-protection: an admin may not deactivate or demote their own account —
+ * that would lock them (or everyone) out of the admin panel.
  */
 class UserController extends Controller
 {
@@ -113,31 +119,6 @@ class UserController extends Controller
         return redirect()
             ->route('admin.users.edit', $user)
             ->with('status', "Kata sandi \"{$user->name}\" berhasil direset.");
-    }
-
-    public function destroy(Request $request, User $user)
-    {
-        if ($user->is($request->user())) {
-            return back()->withErrors(['user' => 'Anda tidak dapat menghapus akun sendiri.']);
-        }
-
-        // created_by uses ON DELETE RESTRICT on administrator-owned content.
-        // Refuse cleanly instead of letting the database throw an FK error.
-        if (DB::table('questionnaires')->where('created_by', $user->id)->exists()) {
-            return back()->withErrors(['user' => 'Pengguna ini tercatat sebagai pembuat kuisioner, sehingga tidak dapat dihapus. Nonaktifkan akunnya saja.']);
-        }
-
-        if (DB::table('banners')->where('created_by', $user->id)->exists()) {
-            return back()->withErrors(['user' => 'Pengguna ini tercatat sebagai pembuat banner, sehingga tidak dapat dihapus. Nonaktifkan akunnya saja.']);
-        }
-
-        $name = $user->name;
-        // FK CASCADE also removes their access grants, visits, and questionnaire clicks.
-        $user->delete();
-
-        return redirect()
-            ->route('admin.users.index')
-            ->with('status', "Pengguna \"{$name}\" dihapus.");
     }
 
     private function formData(): array

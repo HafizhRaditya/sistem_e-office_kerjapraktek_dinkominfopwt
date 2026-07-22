@@ -54,20 +54,40 @@
         </form>
     </div>
 
-    {{-- Danger zone --}}
-    <div class="rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10 p-6">
-        <h2 class="text-base font-semibold text-brand">Hapus Pengguna</h2>
+    {{-- Status akun: pengganti aksi hapus (akun tidak pernah dihapus permanen) --}}
+    <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
+        <h2 class="text-base font-semibold">Status Akun</h2>
         <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Menghapus pengguna juga menghapus hak akses, riwayat kunjungan, dan partisipasi kuisionernya. Log aktivitas tetap tersimpan (kolom penggunanya dikosongkan).
+            Akun tidak dapat dihapus permanen. Menonaktifkan akun menghentikan aksesnya ke portal,
+            sementara hak akses, riwayat kunjungan, dan partisipasi kuisionernya tetap tersimpan
+            dan pulih utuh bila akun diaktifkan kembali.
         </p>
-        @if ($isSelf)
-            <p class="mt-4 text-sm font-medium text-slate-400">Akun sendiri tidak dapat dihapus.</p>
-        @else
-            <form method="POST" action="{{ route('admin.users.destroy', $user) }}" class="mt-4"
-                onsubmit="return confirm('Hapus pengguna &quot;{{ $user->name }}&quot;? Tindakan ini permanen.');">
-                @csrf @method('DELETE')
-                <button type="submit" class="rounded-lg border border-brand text-brand hover:bg-brand hover:text-white text-sm font-semibold px-4 py-2 transition">Hapus Pengguna</button>
-            </form>
+
+        <div class="mt-4 flex flex-wrap items-center gap-4">
+            <span class="text-sm">Status saat ini:</span>
+            @if ($user->is_active)
+                <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">Aktif</span>
+            @else
+                <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300">Tidak aktif</span>
+            @endif
+
+            @if ($isSelf)
+                <span class="text-sm font-medium text-slate-400">Akun sendiri tidak dapat dinonaktifkan.</span>
+            @else
+                <form method="POST" action="{{ route('admin.users.status', $user) }}" class="ml-auto"
+                    onsubmit="return confirm('{{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }} akun &quot;{{ $user->name }}&quot;?');">
+                    @csrf @method('PATCH')
+                    <button type="submit" class="rounded-lg border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-brand hover:text-brand text-sm font-semibold px-4 py-2 transition">
+                        {{ $user->is_active ? 'Nonaktifkan Akun' : 'Aktifkan Akun' }}
+                    </button>
+                </form>
+            @endif
+        </div>
+
+        @if (! $user->is_active)
+            <p class="mt-4 text-xs text-slate-400">
+                Akun nonaktif tidak dapat masuk ke portal meski kata sandinya benar.
+            </p>
         @endif
     </div>
 </div>

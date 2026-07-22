@@ -9,7 +9,14 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 /**
- * Admin — Manajemen Aplikasi (CRUD `applications`).
+ * Admin — Manajemen Aplikasi (`applications`).
+ *
+ * Applications are never deleted, only deactivated via is_active. Deleting one
+ * cascades into its links, every employee's access grants for it, and the visit
+ * records the dashboard module counts from. Setting is_active = false already
+ * makes it unlaunchable by anyone (admins included, see LaunchController) while
+ * the history survives — which is also how the legacy system marked retired
+ * applications (field decision, Dinkominfo).
  *
  * App-layer validation mirrors the DB constraints so users get friendly
  * Indonesian errors before hitting them: slug UNIQUE, app_group/category CHECK.
@@ -63,17 +70,6 @@ class ApplicationController extends Controller
         return redirect()
             ->route('admin.aplikasi.edit', $application)
             ->with('status', 'Aplikasi diperbarui.');
-    }
-
-    public function destroy(Application $application)
-    {
-        $name = $application->name;
-        // FK ON DELETE CASCADE also removes its links, access grants, and visits.
-        $application->delete();
-
-        return redirect()
-            ->route('admin.aplikasi.index')
-            ->with('status', "Aplikasi \"{$name}\" dihapus beserta tautan, hak akses, dan kunjungannya.");
     }
 
     private function formData(): array

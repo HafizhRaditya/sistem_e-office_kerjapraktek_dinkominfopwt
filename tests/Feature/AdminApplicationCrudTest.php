@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Opd;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 /**
@@ -162,17 +163,72 @@ class AdminApplicationCrudTest extends TestCase
         $this->assertSame(0, $app->links()->count());
     }
 
-    public function test_admin_can_delete_an_application_with_its_links(): void
+    /**
+     * Applications and links are never deleted, only deactivated (field decision,
+     * Dinkominfo): deleting an application cascades into its links, every
+     * employee's access grants for it, and the dashboard module's visit records.
+     */
+    public function test_there_is_no_route_to_delete_an_application_or_a_link(): void
     {
+        $this->assertFalse(Route::has('admin.aplikasi.destroy'), 'route hapus aplikasi harus sudah tidak ada');
+        $this->assertFalse(Route::has('admin.aplikasi.link.destroy'), 'route hapus tautan harus sudah tidak ada');
+
         $this->actingAs($this->admin())->post(route('admin.aplikasi.store'), $this->payload(['slug' => 'uji-hapus']));
         $app = Application::where('slug', 'uji-hapus')->firstOrFail();
+        $link = $app->links()->create(['label' => 'Frontend', 'url' => 'https://contoh.go.id', 'is_active' => true, 'sort_order' => 0]);
+
+        $this->actingAs($this->admin())->delete('/admin/aplikasi/'.$app->id)->assertStatus(405);
+        $this->actingAs($this->admin())->delete("/admin/aplikasi/{$app->id}/link/{$link->id}")->assertStatus(405);
+
+        $this->assertNotNull(Application::where('slug', 'uji-hapus')->first(), 'aplikasi harus tetap ada');
+        $this->assertSame(1, DB::table('application_links')->where('application_id', $app->id)->count());
+    }
+
+    /**
+     * Deactivation replaces deletion, so it must keep what deletion destroyed:
+     * the links and access grants survive, and an inactive application is already
+     * refused at launch by LaunchController.
+     */
+    public function test_deactivating_an_application_keeps_its_links_and_grants(): void
+    {
+        $this->actingAs($this->admin())->post(route('admin.aplikasi.store'), $this->payload(['slug' => 'uji-nonaktif']));
+        $app = Application::where('slug', 'uji-nonaktif')->firstOrFail();
         $app->links()->create(['label' => 'Frontend', 'url' => 'https://contoh.go.id', 'is_active' => true, 'sort_order' => 0]);
 
-        $this->actingAs($this->admin())
-            ->delete(route('admin.aplikasi.destroy', $app))
-            ->assertRedirect(route('admin.aplikasi.index'));
+        $pegawai = User::where('nip_nik', '3302010000000002')->firstOrFail();
+        DB::table('application_access')->insert([
+            'application_id' => $app->id,
+            'user_id' => $pegawai->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
-        $this->assertNull(Application::where('slug', 'uji-hapus')->first());
-        $this->assertSame(0, DB::table('application_links')->where('application_id', $app->id)->count());
+        $this->actingAs($this->admin())
+            ->put(route('admin.aplikasi.update', $app), $this->payload([
+                'slug' => 'uji-nonaktif',
+                'is_active' => '0',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertFalse((bool) $app->fresh()->is_active);
+        $this->assertSame(1, DB::table('application_links')->where('application_id', $app->id)->count());
+        $this->assertSame(1, DB::table('application_access')->where('application_id', $app->id)->count());
+
+        // The guard already covers this, but state it here too: deactivating is a
+        // real retirement, not a cosmetic flag.
+        $this->actingAs($pegawai)->get('/launch/uji-nonaktif')->assertStatus(403);
+    }
+
+    public function test_the_edit_page_offers_deactivation_instead_of_deletion(): void
+    {
+        $app = Application::where('slug', 'banyumas-smart-city')->firstOrFail();
+
+        $html = $this->actingAs($this->admin())
+            ->get(route('admin.aplikasi.edit', $app))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('Status Ketersediaan', $html);
+        $this->assertStringNotContainsString('Hapus Aplikasi', $html);
     }
 }
