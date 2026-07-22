@@ -31,7 +31,7 @@
         : '';
 
     $navItems = [
-        ['label' => 'Dashboard', 'icon' => 'grid_view', 'url' => route('dashboard'), 'active' => false, 'enabled' => true],
+        ['label' => 'Ringkasan', 'icon' => 'grid_view', 'url' => route('admin.ringkasan'), 'active' => request()->routeIs('admin.ringkasan'), 'enabled' => true],
         ['label' => 'Manajemen Hak Akses', 'icon' => 'key', 'url' => route('admin.akses.index'), 'active' => request()->routeIs('admin.akses.*'), 'enabled' => true],
         ['label' => 'Manajemen Aplikasi', 'icon' => 'apps', 'url' => \Illuminate\Support\Facades\Route::has('admin.aplikasi.index') ? route('admin.aplikasi.index') : null, 'active' => request()->routeIs('admin.aplikasi.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.aplikasi.index')],
         ['label' => 'Manajemen Pengguna', 'icon' => 'group', 'url' => \Illuminate\Support\Facades\Route::has('admin.users.index') ? route('admin.users.index') : null, 'active' => request()->routeIs('admin.users.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.users.index')],

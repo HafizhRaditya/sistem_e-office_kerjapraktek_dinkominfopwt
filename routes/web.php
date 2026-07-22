@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
 use App\Http\Controllers\Admin\BannerController;
+use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -44,6 +45,9 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
     ->group(function () {
         // Admin root: the panel's landing page (Manajemen Hak Akses is the core screen)
         Route::get('/', fn () => redirect()->route('admin.akses.index'))->name('home');
+
+        // Ringkasan — read-only overview of the auth & access-control module
+        Route::get('/ringkasan', [OverviewController::class, 'index'])->name('ringkasan');
 
         // Manajemen Hak Akses — application_access per employee
         Route::get('/akses', [AccessController::class, 'index'])->name('akses.index');
