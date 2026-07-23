@@ -82,7 +82,7 @@ class ApplicationController extends Controller
     {
         $application->load(['opd', 'links' => fn ($q) => $q->orderBy('sort_order')->orderBy('label')]);
 
-        return view('admin.aplikasi.edit', array_merge($this->formData(), ['application' => $application]));
+        return view('admin.aplikasi.edit', array_merge($this->formData($application->opd_id), ['application' => $application]));
     }
 
     public function update(Request $request, Application $application)
@@ -114,10 +114,19 @@ class ApplicationController extends Controller
             ->with('status', 'Aplikasi diperbarui.');
     }
 
-    private function formData(): array
+    private function formData(?int $currentOpdId = null): array
     {
         return [
-            'opds' => Opd::orderBy('name')->get(),
+            'opds' => Opd::query()
+                ->where(function ($query) use ($currentOpdId) {
+                    $query->where('is_active', true);
+
+                    if ($currentOpdId !== null) {
+                        $query->orWhere('id', $currentOpdId);
+                    }
+                })
+                ->orderBy('name')
+                ->get(),
             'appGroups' => self::APP_GROUPS,
             'categories' => self::CATEGORIES,
         ];
@@ -127,7 +136,19 @@ class ApplicationController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
-            'opd_id' => ['required', 'integer', 'exists:opds,id'],
+            'opd_id' => [
+                'required',
+                'integer',
+                Rule::exists('opds', 'id')->where(function ($query) use ($application) {
+                    $query->where(function ($nested) use ($application) {
+                        $nested->where('is_active', true);
+
+                        if ($application !== null) {
+                            $nested->orWhere('id', $application->opd_id);
+                        }
+                    });
+                }),
+            ],
             'slug' => [
                 'required', 'string', 'max:150',
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
@@ -163,7 +184,7 @@ class ApplicationController extends Controller
         ], [
             'name.required' => 'Nama aplikasi wajib diisi.',
             'opd_id.required' => 'OPD pemilik wajib dipilih.',
-            'opd_id.exists' => 'OPD yang dipilih tidak valid.',
+            'opd_id.exists' => 'OPD yang dipilih tidak valid atau sudah nonaktif.',
             'slug.required' => 'Slug wajib diisi.',
             'slug.regex' => 'Slug hanya boleh huruf kecil, angka, dan tanda hubung (contoh: e-planning).',
             'slug.unique' => 'Slug sudah dipakai aplikasi lain.',

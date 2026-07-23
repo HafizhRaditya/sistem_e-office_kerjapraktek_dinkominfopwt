@@ -33,6 +33,7 @@
     $navItems = [
         ['label' => 'Ringkasan', 'icon' => 'grid_view', 'url' => route('admin.ringkasan'), 'active' => request()->routeIs('admin.ringkasan'), 'enabled' => true],
         ['label' => 'Manajemen Hak Akses', 'icon' => 'key', 'url' => route('admin.akses.index'), 'active' => request()->routeIs('admin.akses.*'), 'enabled' => true],
+        ['label' => 'Manajemen OPD', 'icon' => 'account_balance', 'url' => \Illuminate\Support\Facades\Route::has('admin.opds.index') ? route('admin.opds.index') : null, 'active' => request()->routeIs('admin.opds.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.opds.index')],
         ['label' => 'Manajemen Aplikasi', 'icon' => 'apps', 'url' => \Illuminate\Support\Facades\Route::has('admin.aplikasi.index') ? route('admin.aplikasi.index') : null, 'active' => request()->routeIs('admin.aplikasi.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.aplikasi.index')],
         ['label' => 'Manajemen Pengguna', 'icon' => 'group', 'url' => \Illuminate\Support\Facades\Route::has('admin.users.index') ? route('admin.users.index') : null, 'active' => request()->routeIs('admin.users.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.users.index')],
         ['label' => 'Manajemen Banner', 'icon' => 'view_carousel', 'url' => \Illuminate\Support\Facades\Route::has('admin.banners.index') ? route('admin.banners.index') : null, 'active' => request()->routeIs('admin.banners.*'), 'enabled' => \Illuminate\Support\Facades\Route::has('admin.banners.index')],

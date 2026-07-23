@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
 use App\Http\Controllers\Admin\BannerController;
 use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\OpdController;
 use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -53,6 +54,15 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::get('/akses', [AccessController::class, 'index'])->name('akses.index');
         Route::get('/akses/{user}', [AccessController::class, 'edit'])->name('akses.edit');
         Route::put('/akses/{user}', [AccessController::class, 'update'])->name('akses.update');
+
+        // Manajemen OPD — master data; no permanent deletion
+        Route::get('/opd', [OpdController::class, 'index'])->name('opds.index');
+        Route::get('/opd/create', [OpdController::class, 'create'])->name('opds.create');
+        Route::post('/opd', [OpdController::class, 'store'])->name('opds.store');
+        Route::get('/opd/{opd}/edit', [OpdController::class, 'edit'])->name('opds.edit');
+        Route::put('/opd/{opd}', [OpdController::class, 'update'])->name('opds.update');
+        Route::patch('/opd/{opd}/status', [OpdController::class, 'status'])->name('opds.status');
+        // No destroy route: OPD are retired by setting is_active = false.
 
         // Manajemen Aplikasi — CRUD applications
         Route::get('/aplikasi', [ApplicationController::class, 'index'])->name('aplikasi.index');

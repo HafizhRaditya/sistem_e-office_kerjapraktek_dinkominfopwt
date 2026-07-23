@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\ApplicationLink;
 use App\Models\Banner;
+use App\Models\Opd;
 use App\Models\Questionnaire;
 use App\Models\User;
 use DateTimeInterface;
@@ -102,6 +103,7 @@ final class ActivityLogger
     private function subjectType(Model $subject): string
     {
         return match (true) {
+            $subject instanceof Opd => 'opd',
             $subject instanceof User => 'user',
             $subject instanceof Application => 'application',
             $subject instanceof ApplicationLink => 'application_link',

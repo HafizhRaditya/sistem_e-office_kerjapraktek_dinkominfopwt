@@ -90,7 +90,7 @@
         <select id="opd_id" name="opd_id" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
             <option value="">— pilih OPD —</option>
             @foreach ($opds as $opd)
-                <option value="{{ $opd->id }}" @selected((string) old('opd_id', $app?->opd_id) === (string) $opd->id)>{{ $opd->name }}</option>
+                <option value="{{ $opd->id }}" @selected((string) old('opd_id', $app?->opd_id) === (string) $opd->id)>{{ $opd->name }}@unless($opd->is_active) — Nonaktif @endunless</option>
             @endforeach
         </select>
         @error('opd_id') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror

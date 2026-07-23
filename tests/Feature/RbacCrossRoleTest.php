@@ -109,10 +109,15 @@ class RbacCrossRoleTest extends TestCase
     {
         $link = $this->smartCity->links()->orderBy('id')->firstOrFail();
 
+        $opd = Opd::where('code', 'SETDA')->firstOrFail();
+
         return [
             'Beranda admin (/admin)' => '/admin',
             'Manajemen Hak Akses' => route('admin.akses.index'),
             'Atur Akses pengguna' => route('admin.akses.edit', $this->pegawaiA),
+            'Manajemen OPD' => route('admin.opds.index'),
+            'Tambah OPD' => route('admin.opds.create'),
+            'Ubah OPD' => route('admin.opds.edit', $opd),
             'Manajemen Aplikasi' => route('admin.aplikasi.index'),
             'Tambah Aplikasi' => route('admin.aplikasi.create'),
             'Ubah Aplikasi' => route('admin.aplikasi.edit', $this->smartCity),

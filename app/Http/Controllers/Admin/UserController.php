@@ -68,7 +68,7 @@ class UserController extends Controller
     {
         $user->load('opd');
 
-        return view('admin.pengguna.edit', array_merge($this->formData(), [
+        return view('admin.pengguna.edit', array_merge($this->formData($user->opd_id), [
             'user' => $user,
             'isSelf' => $user->is($request->user()),
         ]));
@@ -161,10 +161,19 @@ class UserController extends Controller
             ->with('status', "Kata sandi \"{$user->name}\" berhasil direset.");
     }
 
-    private function formData(): array
+    private function formData(?int $currentOpdId = null): array
     {
         return [
-            'opds' => Opd::orderBy('name')->get(),
+            'opds' => Opd::query()
+                ->where(function ($query) use ($currentOpdId) {
+                    $query->where('is_active', true);
+
+                    if ($currentOpdId !== null) {
+                        $query->orWhere('id', $currentOpdId);
+                    }
+                })
+                ->orderBy('name')
+                ->get(),
             'roles' => self::ROLES,
         ];
     }
@@ -175,7 +184,19 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:150'],
             'nip_nik' => ['required', 'string', 'max:20', Rule::unique('users', 'nip_nik')->ignore($user?->id)],
             'email' => ['nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user?->id)],
-            'opd_id' => ['required', 'integer', 'exists:opds,id'],
+            'opd_id' => [
+                'required',
+                'integer',
+                Rule::exists('opds', 'id')->where(function ($query) use ($user) {
+                    $query->where(function ($nested) use ($user) {
+                        $nested->where('is_active', true);
+
+                        if ($user !== null) {
+                            $nested->orWhere('id', $user->opd_id);
+                        }
+                    });
+                }),
+            ],
             'role' => ['required', Rule::in(self::ROLES)],
         ];
 
@@ -191,7 +212,7 @@ class UserController extends Controller
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah dipakai pengguna lain.',
             'opd_id.required' => 'OPD wajib dipilih.',
-            'opd_id.exists' => 'OPD yang dipilih tidak valid.',
+            'opd_id.exists' => 'OPD yang dipilih tidak valid atau sudah nonaktif.',
             'role.required' => 'Peran wajib dipilih.',
             'role.in' => 'Peran hanya boleh admin atau pegawai.',
         ], self::PASSWORD_MESSAGES));
