@@ -19,6 +19,11 @@ final class ActivityType
     public const USER_DEACTIVATED = 'user_deactivated';
     public const ACCESS_UPDATED = 'access_updated';
 
+    public const OPD_CREATED = 'opd_created';
+    public const OPD_UPDATED = 'opd_updated';
+    public const OPD_ACTIVATED = 'opd_activated';
+    public const OPD_DEACTIVATED = 'opd_deactivated';
+
     public const APPLICATION_CREATED = 'application_created';
     public const APPLICATION_UPDATED = 'application_updated';
     public const APPLICATION_LINK_CREATED = 'application_link_created';
@@ -50,6 +55,11 @@ final class ActivityType
             self::USER_ACTIVATED => 'Aktifkan pengguna',
             self::USER_DEACTIVATED => 'Nonaktifkan pengguna',
             self::ACCESS_UPDATED => 'Ubah hak akses',
+
+            self::OPD_CREATED => 'Tambah OPD',
+            self::OPD_UPDATED => 'Ubah OPD',
+            self::OPD_ACTIVATED => 'Aktifkan OPD',
+            self::OPD_DEACTIVATED => 'Nonaktifkan OPD',
 
             self::APPLICATION_CREATED => 'Tambah aplikasi',
             self::APPLICATION_UPDATED => 'Ubah aplikasi',

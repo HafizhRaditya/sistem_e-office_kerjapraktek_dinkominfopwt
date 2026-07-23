@@ -19,6 +19,10 @@
         'user_activated' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
         'user_deactivated' => 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
         'access_updated' => 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+        'opd_created' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+        'opd_updated' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+        'opd_activated' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+        'opd_deactivated' => 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
         'application_created' => 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
         'application_updated' => 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
         'application_link_created' => 'bg-cyan-50 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300',
@@ -32,6 +36,7 @@
     ];
 
     $subjectLabels = [
+        'opd' => 'OPD',
         'user' => 'Pengguna',
         'application' => 'Aplikasi',
         'application_link' => 'Tautan aplikasi',

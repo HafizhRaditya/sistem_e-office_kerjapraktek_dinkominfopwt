@@ -100,7 +100,7 @@ class AdminUxPolishTest extends TestCase
         $errors = $this->validationErrors();
 
         $this->assertSame('Nama maksimal 150 karakter.', $errors->first('name'));
-        $this->assertSame('OPD yang dipilih tidak valid.', $errors->first('opd_id'));
+        $this->assertSame('OPD yang dipilih tidak valid atau sudah nonaktif.', $errors->first('opd_id'));
         $this->assertNoEnglishIn($errors->all());
     }
 
