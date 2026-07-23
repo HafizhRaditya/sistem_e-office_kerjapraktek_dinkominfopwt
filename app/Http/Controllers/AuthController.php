@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -163,17 +164,27 @@ class AuthController extends Controller
     /**
      * Verify the Cloudflare Turnstile token (FR-A02).
      *
-     * TODO(HNR): No Turnstile keys are set yet (TURNSTILE_SITEKEY / TURNSTILE_SECRET
-     * in .env). Until the secret is configured, verification is SKIPPED so local
-     * login works. Once the secret is present, this performs real server-side
-     * verification and login is rejected when the token is missing or invalid.
+     * A missing secret is treated differently per environment, on purpose:
+     *
+     * - local/testing: verification is skipped, so the app runs without
+     *   Cloudflare keys and the login pipeline stays testable.
+     * - production: verification FAILS. Forgetting TURNSTILE_SECRET on the
+     *   server would otherwise disable bot protection silently — the login page
+     *   would look and behave normally while the check was gone. Failing closed
+     *   turns that misconfiguration into something the operator notices at once.
      */
     private function turnstilePasses(Request $request): bool
     {
         $secret = config('services.turnstile.secret');
 
         if (blank($secret)) {
-            return true; // dev/local: not configured → skip.
+            if (app()->environment('production')) {
+                Log::error('TURNSTILE_SECRET is not set: login refused because bot protection cannot be verified.');
+
+                return false;
+            }
+
+            return true; // local/testing: not configured → skip.
         }
 
         $token = $request->input('cf-turnstile-response');
