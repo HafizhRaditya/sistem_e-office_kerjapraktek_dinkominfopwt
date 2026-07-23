@@ -12,7 +12,7 @@
     {{-- Application detail --}}
     <div class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
         <h2 class="text-base font-semibold mb-5">Detail Aplikasi</h2>
-        <form method="POST" action="{{ route('admin.aplikasi.update', $application) }}">
+        <form method="POST" action="{{ route('admin.aplikasi.update', $application) }}" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             @include('admin.aplikasi._form', ['application' => $application])

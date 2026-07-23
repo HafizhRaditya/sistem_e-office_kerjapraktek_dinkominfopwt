@@ -1,4 +1,10 @@
-@php $app = $application ?? null; @endphp
+@php
+    $app = $application ?? null;
+    $iconValue = old('icon_path', $app?->icon);
+    $iconPreview = $iconValue
+        ? ((str_starts_with($iconValue, 'http://') || str_starts_with($iconValue, 'https://')) ? $iconValue : asset($iconValue))
+        : null;
+@endphp
 
 @if ($errors->any())
     <div class="mb-5 rounded-lg border border-brand/30 bg-brand/5 px-4 py-3 text-sm text-brand font-medium">
@@ -12,6 +18,71 @@
         <input id="name" name="name" type="text" value="{{ old('name', $app?->name) }}"
             class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
         @error('name') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
+    </div>
+
+    <div class="sm:col-span-2 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-700 dark:bg-slate-950/40"
+        x-data="{
+            preview: @js($iconPreview),
+            original: @js($iconPreview),
+            baseUrl: @js(url('/')),
+            removed: @js((bool) old('remove_icon', false)),
+            previewFile(event) {
+                const file = event.target.files?.[0];
+                if (! file) return;
+
+                this.removed = false;
+                const reader = new FileReader();
+                reader.onload = (e) => this.preview = e.target?.result;
+                reader.readAsDataURL(file);
+            },
+            previewPath(value) {
+                this.removed = false;
+                value = value.trim();
+                this.preview = value
+                    ? (/^https?:\/\//i.test(value) ? value : this.baseUrl + '/' + value.replace(/^\/+/, ''))
+                    : null;
+            },
+        }">
+        <div class="flex flex-col gap-4 sm:flex-row">
+            <div class="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+                <template x-if="preview && ! removed">
+                    <img :src="preview" alt="Pratinjau ikon aplikasi" class="h-full w-full object-contain p-2">
+                </template>
+                <template x-if="! preview || removed">
+                    <span class="material-symbols-outlined text-4xl text-slate-300">apps</span>
+                </template>
+            </div>
+
+            <div class="grid min-w-0 flex-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label for="icon_file" class="block text-sm font-medium mb-1.5">Unggah ikon</label>
+                    <input id="icon_file" name="icon_file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                        @change="previewFile($event)"
+                        class="block w-full rounded-lg border border-slate-300 bg-white text-sm text-slate-600 file:mr-3 file:border-0 file:border-r file:border-slate-200 file:bg-slate-50 file:px-3 file:py-2.5 file:text-sm file:font-medium dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:file:border-slate-700 dark:file:bg-slate-800">
+                    <p class="mt-1 text-xs text-slate-400">JPG, PNG, atau WEBP. Maksimal 5 MB. Disarankan rasio 1:1.</p>
+                    @error('icon_file') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
+                </div>
+
+                <div>
+                    <label for="icon_path" class="block text-sm font-medium mb-1.5">URL/path ikon <span class="font-normal text-slate-400">(opsional)</span></label>
+                    <input id="icon_path" name="icon_path" type="text" value="{{ old('icon_path', $app?->icon) }}"
+                        placeholder="https://... atau images/applications/icon.webp"
+                        @input="previewPath($event.target.value)"
+                        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 dark:border-slate-700 dark:bg-slate-900">
+                    <p class="mt-1 text-xs text-slate-400">Unggahan baru menjadi pilihan utama.</p>
+                    @error('icon_path') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
+                </div>
+
+                @if ($app?->icon)
+                    <label class="flex cursor-pointer items-center gap-2 text-sm sm:col-span-2">
+                        <input type="checkbox" name="remove_icon" value="1" x-model="removed"
+                            @change="preview = removed ? null : original"
+                            class="h-4 w-4 accent-brand">
+                        Hapus ikon saat ini
+                    </label>
+                @endif
+            </div>
+        </div>
     </div>
 
     <div>

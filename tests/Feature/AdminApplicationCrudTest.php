@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\Opd;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -60,6 +62,16 @@ class AdminApplicationCrudTest extends TestCase
             ->get('/admin/aplikasi')
             ->assertOk()
             ->assertSee('Manajemen Aplikasi');
+    }
+
+    public function test_application_form_exposes_icon_management(): void
+    {
+        $this->actingAs($this->admin())
+            ->get(route('admin.aplikasi.create'))
+            ->assertOk()
+            ->assertSee('Unggah ikon')
+            ->assertSee('URL/path ikon')
+            ->assertSee('multipart/form-data', false);
     }
 
     public function test_admin_can_create_an_application(): void
@@ -231,4 +243,71 @@ class AdminApplicationCrudTest extends TestCase
         $this->assertStringContainsString('Status Ketersediaan', $html);
         $this->assertStringNotContainsString('Hapus Aplikasi', $html);
     }
+
+    public function test_admin_can_upload_replace_and_remove_an_application_icon(): void
+    {
+        Storage::fake('public');
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.aplikasi.store'), $this->payload([
+                'slug' => 'uji-icon-upload',
+                'icon_file' => UploadedFile::fake()->image('ikon-awal.png', 256, 256),
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $app = Application::where('slug', 'uji-icon-upload')->firstOrFail();
+        $firstPath = str_replace('/storage/', '', $app->icon);
+
+        $this->assertStringStartsWith('/storage/application-icons/', $app->icon);
+        Storage::disk('public')->assertExists($firstPath);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.aplikasi.update', $app), $this->payload([
+                'slug' => 'uji-icon-upload',
+                'icon_file' => UploadedFile::fake()->image('ikon-baru.png', 300, 300),
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $app->refresh();
+        $secondPath = str_replace('/storage/', '', $app->icon);
+
+        $this->assertNotSame($firstPath, $secondPath);
+        Storage::disk('public')->assertMissing($firstPath);
+        Storage::disk('public')->assertExists($secondPath);
+
+        $this->actingAs($this->admin())
+            ->put(route('admin.aplikasi.update', $app), $this->payload([
+                'slug' => 'uji-icon-upload',
+                'remove_icon' => '1',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertNull($app->fresh()->icon);
+        Storage::disk('public')->assertMissing($secondPath);
+    }
+
+    public function test_icon_path_accepts_public_assets_and_rejects_unsafe_paths(): void
+    {
+        $this->actingAs($this->admin())
+            ->post(route('admin.aplikasi.store'), $this->payload([
+                'slug' => 'uji-icon-path',
+                'icon_path' => 'images/applications/ikon-kustom.webp',
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            'images/applications/ikon-kustom.webp',
+            Application::where('slug', 'uji-icon-path')->firstOrFail()->icon,
+        );
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.aplikasi.store'), $this->payload([
+                'slug' => 'uji-icon-tidak-aman',
+                'icon_path' => '../private/rahasia.png',
+            ]))
+            ->assertSessionHasErrors('icon_path');
+
+        $this->assertNull(Application::where('slug', 'uji-icon-tidak-aman')->first());
+    }
+
 }

@@ -85,8 +85,19 @@ new class extends Component
                 @forelse ($applications as $app)
                     <tr wire:key="app-{{ $app->id }}" class="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                         <td class="px-5 py-3">
-                            <p class="font-medium">{{ $app->name }} @if ($app->is_new)<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-semibold uppercase">Baru</span>@endif</p>
-                            <p class="text-xs text-slate-400 font-mono">{{ $app->slug }}</p>
+                            <div class="flex items-center gap-3">
+                                <div class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800">
+                                    @if ($app->icon)
+                                        <img src="{{ asset($app->icon) }}" alt="Ikon {{ $app->name }}" class="h-full w-full object-contain p-1">
+                                    @else
+                                        <span class="material-symbols-outlined text-xl text-slate-400">apps</span>
+                                    @endif
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-medium">{{ $app->name }} @if ($app->is_new)<span class="ml-1 px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 text-[10px] font-semibold uppercase">Baru</span>@endif</p>
+                                    <p class="text-xs text-slate-400 font-mono">{{ $app->slug }}</p>
+                                </div>
+                            </div>
                         </td>
                         <td class="px-5 py-3"><span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ optional($app->opd)->code ?? '—' }}</span></td>
                         <td class="px-5 py-3">
