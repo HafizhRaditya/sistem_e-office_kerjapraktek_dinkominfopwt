@@ -10,7 +10,7 @@
     </a>
 
     <div class="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6">
-        <form method="POST" action="{{ route('admin.aplikasi.store') }}">
+        <form method="POST" action="{{ route('admin.aplikasi.store') }}" enctype="multipart/form-data">
             @csrf
             @include('admin.aplikasi._form', ['application' => null])
 
