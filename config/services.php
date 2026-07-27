@@ -42,4 +42,19 @@ return [
         'secret' => env('TURNSTILE_SECRET'),
     ],
 
+    // Keycloak SSO (OIDC) — a SECOND login path beside NIP/NIK; the local
+    // password login is unchanged. Read by App\Services\KeycloakOidcService,
+    // which derives the issuer URL as base_url + '/realms/' + realm and then
+    // discovers every endpoint from .well-known/openid-configuration.
+    // Leaving any of these empty disables the "Masuk dengan Keycloak" button
+    // (KeycloakOidcService::isEnabled() gates the route and the login view), so
+    // a fresh checkout without Keycloak keys still runs on password login alone.
+    'keycloak' => [
+        'client_id' => env('KEYCLOAK_CLIENT_ID'),
+        'client_secret' => env('KEYCLOAK_CLIENT_SECRET'),
+        'redirect' => env('KEYCLOAK_REDIRECT_URI'),
+        'base_url' => env('KEYCLOAK_BASE_URL'),
+        'realm' => env('KEYCLOAK_REALM'),
+    ],
+
 ];
