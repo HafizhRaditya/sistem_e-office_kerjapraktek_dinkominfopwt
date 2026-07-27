@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\ApplicationAccess;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Models\User;
 use App\Services\ActivityLogger;
@@ -23,12 +24,6 @@ class AccessController extends Controller
 {
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
-    /** Application categories (mirrors the DB CHECK constraint). */
-    private const CATEGORIES = [
-        'governance', 'economy', 'kinerja', 'gawai', 'rencana', 'uang',
-        'pajak', 'kesehatan', 'data', 'wisata', 'umum',
-    ];
-
     /**
      * The list itself (live search + OPD filter + pagination) is rendered by the
      * <livewire:admin.access-table> component, so it filters as you type while
@@ -45,14 +40,22 @@ class AccessController extends Controller
 
         // The whole app list is loaded (no pagination) so the "Atur Akses" page
         // can filter/search/toggle instantly with Alpine on the client.
-        $apps = Application::with('opd')
+        $apps = Application::with([
+            'opd',
+            'categories' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
+        ])
             ->orderBy('name')
             ->get()
             ->map(fn ($a) => [
                 'id' => $a->id,
                 'name' => $a->name,
                 'opd' => optional($a->opd)->code,
-                'category' => $a->category,
+                'categories' => $a->categories->map(fn (Category $category): array => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'slug' => $category->slug,
+                    'active' => (bool) $category->is_active,
+                ])->values(),
                 'active' => (bool) $a->is_active,
             ])
             ->values();
@@ -68,7 +71,11 @@ class AccessController extends Controller
             'grantedIds' => $grantedIds,
             'totalApps' => $apps->count(),
             'opds' => Opd::orderBy('name')->get(),
-            'categories' => self::CATEGORIES,
+            'categories' => Category::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
         ]);
     }
 

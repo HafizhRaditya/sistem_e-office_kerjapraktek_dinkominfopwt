@@ -17,10 +17,12 @@ Sistem lama berjalan di **PHP 5.5.33** (end-of-life sejak 2016), Nginx 1.10.2, B
 1. **Rebuild sistem** — migrasi ke bahasa/framework baru, perbarui tampilan dan keamanan.
 2. **Popup kuisioner** — popup yang selama ini menampilkan pengumuman ditambah fungsi kuisioner; **hitung dan tampilkan** jumlah user yang sudah mengeklik/mengisi kuisioner.
 3. **Pembatasan hak akses aplikasi (RBAC)** — semua aplikasi **tetap tampil** ke semua pegawai; aplikasi yang tidak menjadi hak akses user **ditandai** (ikon gembok, label "Tidak Memiliki Akses", tombol nonaktif) dan diblokir di level route/server (403). Bukan disembunyikan. *(Revisi pembimbing lapangan.)*
+4. **Manajemen kategori aplikasi** — kategori dapat diaktifkan/nonaktifkan dan satu aplikasi dapat memiliki banyak kategori. Kategori nonaktif tidak muncul di dashboard, tetapi tidak menyembunyikan aplikasi yang terhubung.
+5. **Proof-of-concept SSO Keycloak** — E-Office dan satu aplikasi demo menjadi client pada realm yang sama untuk membuktikan login satu kali tanpa memasukkan kredensial kembali.
 
 ### Di luar ruang lingkup (out of scope)
 - Membangun ulang aplikasi-aplikasi tujuan (Presensi, SKP, dll.) — kita hanya membangun **portalnya**.
-- Integrasi SSO nyata ke aplikasi eksternal (cukup disimulasikan dengan tautan keluar).
+- Mengintegrasikan seluruh aplikasi produksi ke Keycloak; tanggung jawab proyek dibatasi pada E-Office dan aplikasi demo pengujian.
 - Migrasi data produksi (gunakan data dummy/seeder yang menyerupai struktur asli).
 
 ---
@@ -73,7 +75,9 @@ opds                    : id, code (UK), name, is_active, timestamps
 users                   : id, opd_id (FK), nip_nik (UK, login), name, email (UK,null),
                           password, role (CHECK admin|pegawai), is_active, last_login_at, timestamps
 applications            : id, opd_id (FK), name, slug (UK), description, icon,
-                          app_group (CHECK smartcity|spbe|tools), category (CHECK), is_active, is_new, sort_order, timestamps
+                          app_group (CHECK smartcity|spbe|tools), is_active, is_new, sort_order, timestamps
+categories               : id, name, slug (UK), is_active, sort_order, timestamps
+application_category     : application_id (FK), category_id (FK)  [PRIMARY KEY(application_id,category_id)]
 application_links       : id, application_id (FK), label, url, is_active, sort_order, timestamps  [UNIQUE(application_id,label)]
 application_access      : id, application_id (FK), user_id (FK), timestamps  [UNIQUE(application_id,user_id)] -- hak akses per pegawai
 application_visits      : id, application_id (FK), application_link_id (FK,null), user_id (FK), visit_date, visited_at  (tanpa timestamps)
@@ -87,6 +91,7 @@ activity_logs           : id, user_id (FK,null), application_id (FK,null), quest
 **Aturan bisnis penting (ditegakkan DI DATABASE, bukan hanya di kode):**
 - **Role** = kolom `users.role` CHECK ('admin','pegawai'); tidak ada tabel roles. **Login** memakai `nip_nik`.
 - Semua aplikasi tetap tampil; hak akses (`application_access`) hanya **menandai** kartu + memvalidasi peluncuran server (403). `can_access(user,app) = role='admin' OR ada baris application_access(app,user)`.
+- Relasi aplikasi–kategori bersifat many-to-many. Status kategori hanya menentukan kemunculan filter/label kategori di dashboard; status tersebut tidak menentukan kemunculan aplikasi.
 - **1 pegawai = 1 klik per kuisioner** (selamanya): `UNIQUE (questionnaire_id, user_id)`.
 - **1 kunjungan per tombol/pegawai/hari**: UNIQUE INDEX `uq_visit_daily` pada `(COALESCE(application_link_id,-1), user_id, visit_date)` — via raw `DB::statement`. Backend & Frontend aplikasi sama di hari sama = 2 kunjungan; tombol sama 2x sehari = 1.
 - Tabel event (`application_visits`, `questionnaire_responses`, `activity_logs`) tanpa `created_at`/`updated_at` → model `$timestamps = false`.
@@ -132,9 +137,9 @@ Lihat **ROADMAP.md** untuk rencana harian. Ringkasan fase:
 | Fase | Periode | Target | Status |
 |---|---|---|---|
 | 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
-| 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | 🔄 sebagian besar selesai (auth, RBAC 403, dashboard data-driven) |
-| 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ⏳ |
-| 3 — Integrasi & UAT | 28–31 Jul | Deploy, UAT, **sistem selesai 31 Juli** | ⏳ |
+| 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | ✅ selesai |
+| 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ✅ selesai |
+| 3 — Integrasi & UAT | 28–31 Jul | Kategori dinamis, Keycloak PoC, UAT | 🔄 berjalan |
 | 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ |
 
 ---

@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\ApplicationLink;
 use App\Models\Banner;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Models\Questionnaire;
 use App\Models\User;
@@ -104,6 +105,7 @@ final class ActivityLogger
     {
         return match (true) {
             $subject instanceof Opd => 'opd',
+            $subject instanceof Category => 'category',
             $subject instanceof User => 'user',
             $subject instanceof Application => 'application',
             $subject instanceof ApplicationLink => 'application_link',

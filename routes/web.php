@@ -5,8 +5,9 @@ use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationLinkController;
 use App\Http\Controllers\Admin\BannerController;
-use App\Http\Controllers\Admin\OverviewController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\OpdController;
+use App\Http\Controllers\Admin\OverviewController;
 use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
@@ -63,6 +64,14 @@ Route::middleware(['auth', EnsureUserIsAdmin::class])
         Route::put('/opd/{opd}', [OpdController::class, 'update'])->name('opds.update');
         Route::patch('/opd/{opd}/status', [OpdController::class, 'status'])->name('opds.status');
         // No destroy route: OPD are retired by setting is_active = false.
+
+        // Manajemen Kategori — many-to-many application categories; no permanent deletion
+        Route::get('/kategori', [CategoryController::class, 'index'])->name('categories.index');
+        Route::get('/kategori/create', [CategoryController::class, 'create'])->name('categories.create');
+        Route::post('/kategori', [CategoryController::class, 'store'])->name('categories.store');
+        Route::get('/kategori/{category}/edit', [CategoryController::class, 'edit'])->name('categories.edit');
+        Route::put('/kategori/{category}', [CategoryController::class, 'update'])->name('categories.update');
+        Route::patch('/kategori/{category}/status', [CategoryController::class, 'status'])->name('categories.status');
 
         // Manajemen Aplikasi — CRUD applications
         Route::get('/aplikasi', [ApplicationController::class, 'index'])->name('aplikasi.index');

@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class EofficeV21Seeder extends Seeder
 {
@@ -36,6 +35,35 @@ class EofficeV21Seeder extends Seeder
             }
 
             $opdId = fn (string $code): int => (int) DB::table('opds')->where('code', $code)->value('id');
+
+            $categories = [
+                ['name' => 'Governance', 'slug' => 'governance', 'sort_order' => 10],
+                ['name' => 'Economy', 'slug' => 'economy', 'sort_order' => 20],
+                ['name' => 'Kinerja', 'slug' => 'kinerja', 'sort_order' => 30],
+                ['name' => 'Gawai', 'slug' => 'gawai', 'sort_order' => 40],
+                ['name' => 'Rencana', 'slug' => 'rencana', 'sort_order' => 50],
+                ['name' => 'Uang', 'slug' => 'uang', 'sort_order' => 60],
+                ['name' => 'Pajak', 'slug' => 'pajak', 'sort_order' => 70],
+                ['name' => 'Kesehatan', 'slug' => 'kesehatan', 'sort_order' => 80],
+                ['name' => 'Data', 'slug' => 'data', 'sort_order' => 90],
+                ['name' => 'Wisata', 'slug' => 'wisata', 'sort_order' => 100],
+                ['name' => 'Umum', 'slug' => 'umum', 'sort_order' => 110],
+            ];
+
+            foreach ($categories as $category) {
+                DB::table('categories')->updateOrInsert(
+                    ['slug' => $category['slug']],
+                    [
+                        'name' => $category['name'],
+                        'is_active' => true,
+                        'sort_order' => $category['sort_order'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ],
+                );
+            }
+
+            $categoryId = fn (string $slug): int => (int) DB::table('categories')->where('slug', $slug)->value('id');
 
             $users = [
                 [
@@ -95,7 +123,7 @@ class EofficeV21Seeder extends Seeder
                     'slug' => 'banyumas-smart-city',
                     'description' => 'Portal integrasi layanan Smart City Kabupaten Banyumas.',
                     'app_group' => 'smartcity',
-                    'category' => 'governance',
+                    'category_slugs' => ['governance'],
                     'is_active' => true,
                     'is_new' => false,
                     'sort_order' => 1,
@@ -111,7 +139,7 @@ class EofficeV21Seeder extends Seeder
                     'slug' => 'simpus',
                     'description' => 'Sistem informasi manajemen puskesmas.',
                     'app_group' => 'spbe',
-                    'category' => 'kesehatan',
+                    'category_slugs' => ['kesehatan'],
                     'icon' => 'images/applications/simpus.webp',
                     'is_active' => true,
                     'is_new' => false,
@@ -128,7 +156,7 @@ class EofficeV21Seeder extends Seeder
                     'slug' => 'e-planning',
                     'description' => 'Aplikasi perencanaan dan pemantauan program daerah.',
                     'app_group' => 'spbe',
-                    'category' => 'rencana',
+                    'category_slugs' => ['rencana'],
                     'is_active' => true,
                     'is_new' => false,
                     'sort_order' => 3,
@@ -143,7 +171,7 @@ class EofficeV21Seeder extends Seeder
                     'slug' => 'agenda-pimpinan',
                     'description' => 'Informasi agenda pimpinan dan koordinasi perangkat daerah.',
                     'app_group' => 'tools',
-                    'category' => 'umum',
+                    'category_slugs' => ['umum'],
                     'is_active' => false,
                     'is_new' => false,
                     'sort_order' => 4,
@@ -158,7 +186,7 @@ class EofficeV21Seeder extends Seeder
                     'slug' => 'data-hub-banyumas',
                     'description' => 'Katalog data dan layanan integrasi data lintas OPD.',
                     'app_group' => 'smartcity',
-                    'category' => 'data',
+                    'category_slugs' => ['data', 'governance'],
                     'is_active' => true,
                     'is_new' => true,
                     'sort_order' => 5,
@@ -179,7 +207,6 @@ class EofficeV21Seeder extends Seeder
                         'description' => $application['description'],
                         'icon' => $application['icon'] ?? null,
                         'app_group' => $application['app_group'],
-                        'category' => $application['category'],
                         'is_active' => $application['is_active'],
                         'is_new' => $application['is_new'],
                         'sort_order' => $application['sort_order'],
@@ -189,6 +216,16 @@ class EofficeV21Seeder extends Seeder
                 );
 
                 $applicationId = (int) DB::table('applications')->where('slug', $application['slug'])->value('id');
+
+                DB::table('application_category')->where('application_id', $applicationId)->delete();
+                DB::table('application_category')->insert(
+                    collect($application['category_slugs'])
+                        ->map(fn (string $slug): array => [
+                            'application_id' => $applicationId,
+                            'category_id' => $categoryId($slug),
+                        ])
+                        ->all(),
+                );
 
                 foreach ($application['links'] as $link) {
                     DB::table('application_links')->updateOrInsert(

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\ActivityLog;
 use App\Models\Application;
 use App\Models\Banner;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Models\Questionnaire;
 use App\Models\User;
@@ -105,7 +106,7 @@ class AdminAuditTrailTest extends TestCase
             'slug' => 'aplikasi-audit',
             'description' => 'Untuk uji audit.',
             'app_group' => 'spbe',
-            'category' => 'data',
+            'category_ids' => [Category::where('slug', 'data')->firstOrFail()->id],
             'sort_order' => 900,
             'is_active' => '1',
         ])->assertRedirect();
