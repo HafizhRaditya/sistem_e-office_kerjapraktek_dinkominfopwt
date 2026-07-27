@@ -8,7 +8,9 @@
 
 **E-Office Banyumas** (`eoffice.banyumaskab.go.id`) adalah portal Single Sign-On (SSO) milik Pemerintah Kabupaten Banyumas yang menjadi pintu masuk tunggal ke 131 aplikasi dinas/pemerintahan ("cukup sekali login untuk semua aplikasi").
 
-Proyek ini adalah **pembangunan ulang (rebuild)** sistem tersebut dalam rangka **Kerja Praktik (KP)** mahasiswa Informatika Universitas Jenderal Soedirman di **Dinkominfo Kabupaten Banyumas**, periode **8 Juli – 7 Agustus 2026**. Target sistem selesai: **31 Juli 2026**.
+Proyek ini adalah **pembangunan ulang (rebuild)** sistem tersebut dalam rangka **Kerja Praktik (KP)** mahasiswa Informatika Universitas Jenderal Soedirman di **Dinkominfo Kabupaten Banyumas**, **Bidang Aplikasi Informatika**, periode **7 Juli – 7 Agustus 2026**. Target sistem selesai: **31 Juli 2026**.
+
+Dasar penempatan: Surat Dinkominfo Kabupaten Banyumas No. **400.14.5.4/2562/VI/2026** tanggal 15 Juni 2026, hal *Jawaban Permohonan Praktek Kerja Lapangan*. Surat memakai istilah **Praktek Kerja Lapangan (PKL)**; di dokumen internal ini istilah yang dipakai adalah **Kerja Praktik (KP)** — keduanya merujuk kegiatan yang sama. Periode resmi dimulai 7 Juli, tetapi proyek baru diserahkan pada 8 Juli sehingga pengerjaan dihitung mulai tanggal tersebut.
 
 ### Alasan rebuild
 Sistem lama berjalan di **PHP 5.5.33** (end-of-life sejak 2016), Nginx 1.10.2, Bootstrap, tanpa framework modern. Perlu diganti dengan stack yang aktif didukung.
@@ -104,7 +106,7 @@ activity_logs           : id, user_id (FK,null), application_id (FK,null), quest
 ```
 sistem_e-office_kerjapraktek_dinkominfopwt/
 ├── README.md            ← file ini (konteks utama untuk manusia & AI)
-├── ROADMAP.md           ← rencana harian 8 Juli – 7 Agustus 2026
+├── ROADMAP.md           ← rencana harian 7 Juli – 7 Agustus 2026
 ├── schema.sql           ← DDL rancangan (validasi ERD; sumber kebenaran = migration)
 ├── docs/
 │   ├── screenshots/     ← 30 screenshot sistem lama (referensi rebuild)
@@ -140,8 +142,8 @@ controller, migration, test), bukan dari rencana:
 |---|---|---|---|
 | 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
 | 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | ✅ selesai |
-| 2 — Fitur inti | 21–25 Jul | Panel admin lengkap (akses, aplikasi, tautan, pengguna, OPD, ringkasan) + kuisioner & statistik | ✅ selesai |
-| 3 — Integrasi & UAT | 28–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
+| 2 — Fitur inti | 20–24 Jul | Panel admin lengkap (akses, aplikasi, tautan, pengguna, OPD, ringkasan) + kuisioner & statistik | ✅ selesai |
+| 3 — Integrasi & UAT | 27–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
 | 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ belum |
 
 **Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis

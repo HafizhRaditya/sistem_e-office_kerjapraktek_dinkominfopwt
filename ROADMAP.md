@@ -1,8 +1,11 @@
 # ROADMAP — Rebuild E-Office Banyumas
 
-**Periode KP:** 8 Juli 2026 — 7 Agustus 2026 (Dinkominfo Kabupaten Banyumas)
+**Periode KP:** 7 Juli 2026 — 7 Agustus 2026 (Dinkominfo Kabupaten Banyumas, **Bidang Aplikasi Informatika**)
+**Dasar:** Surat Dinkominfo Kabupaten Banyumas No. **400.14.5.4/2562/VI/2026** tanggal 15 Juni 2026, hal *Jawaban Permohonan Praktek Kerja Lapangan*
 **Target sistem selesai:** **31 Juli 2026** (sebelum Agustus)
 **Minggu terakhir (1–7 Agustus):** finalisasi laporan, dokumentasi, dan serah terima.
+
+> **Catatan hari pertama.** Periode resmi pada surat dimulai **Selasa 7 Juli 2026**, tetapi proyek belum diserahkan kepada kami pada hari itu sehingga belum ada pekerjaan yang dikerjakan. Pengerjaan baru dimulai **Rabu 8 Juli 2026**, dan Fase 0 karena itu dihitung mulai tanggal tersebut.
 
 **Tim & Judul KP (terkunci):**
 | Inisial | Nama | NIM | Judul KP / Fokus |
@@ -54,15 +57,15 @@
 
 ---
 
-## Fase 2 — Fitur Inti (Senin 21 Juli – Jumat 25 Juli)
+## Fase 2 — Fitur Inti (Senin 20 Juli – Jumat 24 Juli)
 
 | Tanggal | HNR (Hafizh) | MAU (Umar) | Bersama / Laporan |
 |---|---|---|---|
-| **Sen, 21 Jul** | Migration & model sudah ada ✅ → lanjut: halaman admin manajemen **aplikasi & link** | Migration `questionnaires`/`questionnaire_responses` sudah ada ✅ → lanjut: kontrak data popup | Sepakati kontrak data kartu (applications + links + `can_access`) |
-| **Sel, 22 Jul** | CRUD admin: penetapan **hak akses per pegawai** (`application_access`) | **Popup kuisioner** muncul setelah login (aktif + dalam periode + belum klik) | — |
-| **Rab, 23 Jul** | Penanda akses di grid + blokir server **403** — sudah ✅; lanjut: tolak aplikasi/link `is_active=false` | Pencatatan **klik** kuisioner ke DB, idempoten (unik per user, `ON CONFLICT DO NOTHING`) | — |
-| **Kam, 24 Jul** | Halaman admin manajemen **user** + viewer activity log | Halaman statistik partisipasi: total, persentase, **rekap per OPD**, daftar sudah/belum klik | — |
-| **Jum, 25 Jul** | ✅ Uji RBAC lintas peran (admin vs pegawai beda OPD) | ✅ Uji kuisioner: klik terhitung sekali per user, statistik akurat | ✅ Integrasi kedua modul; 🔍 demo internal; 🔍 **Laporan: Bab 3 (Metodologi) selesai draf** |
+| **Sen, 20 Jul** | Migration & model sudah ada ✅ → lanjut: halaman admin manajemen **aplikasi & link** | Migration `questionnaires`/`questionnaire_responses` sudah ada ✅ → lanjut: kontrak data popup | Sepakati kontrak data kartu (applications + links + `can_access`) |
+| **Sel, 21 Jul** | CRUD admin: penetapan **hak akses per pegawai** (`application_access`) | **Popup kuisioner** muncul setelah login (aktif + dalam periode + belum klik) | — |
+| **Rab, 22 Jul** | Penanda akses di grid + blokir server **403** — sudah ✅; lanjut: tolak aplikasi/link `is_active=false` | Pencatatan **klik** kuisioner ke DB, idempoten (unik per user, `ON CONFLICT DO NOTHING`) | — |
+| **Kam, 23 Jul** | Halaman admin manajemen **user** + viewer activity log | Halaman statistik partisipasi: total, persentase, **rekap per OPD**, daftar sudah/belum klik | — |
+| **Jum, 24 Jul** | ✅ Uji RBAC lintas peran (admin vs pegawai beda OPD) | ✅ Uji kuisioner: klik terhitung sekali per user, statistik akurat | ✅ Integrasi kedua modul; 🔍 demo internal; 🔍 **Laporan: Bab 3 (Metodologi) selesai draf** |
 
 > **Tercatat menyusul — dikerjakan pada fase ini tetapi belum masuk rencana harian awal:**
 >
@@ -77,13 +80,13 @@
 
 ---
 
-## Fase 3 — Integrasi, Testing & Selesai (Senin 28 Juli – Jumat 31 Juli)
+## Fase 3 — Integrasi, Testing & Selesai (Senin 27 Juli – Jumat 31 Juli)
 
 | Tanggal | HNR (Hafizh) | MAU (Umar) | Bersama / Laporan |
 |---|---|---|---|
-| **Sen, 28 Jul** | ✅ Bugfix hasil integrasi sisi auth/akses | ✅ Bugfix sisi dashboard/kuisioner + polish UI | ✅ Uji integrasi menyeluruh (178 test lolos) |
-| **Sel, 29 Jul** | ✅ Blackbox testing modul auth & RBAC (tabel skenario untuk laporan) | ⏳ Blackbox testing modul dashboard & kuisioner (tabel skenario untuk laporan) | — |
-| **Rab, 30 Jul** | ✅ Perbaikan hasil testing | ⏳ Perbaikan hasil testing | ✅ Persiapan deployment (perintah admin pertama, Turnstile fail-closed, sesi produksi, reverse proxy) |
+| **Sen, 27 Jul** | ✅ Bugfix hasil integrasi sisi auth/akses | ✅ Bugfix sisi dashboard/kuisioner + polish UI | ✅ Uji integrasi menyeluruh (178 test lolos) |
+| **Sel, 28 Jul** | ✅ Blackbox testing modul auth & RBAC (tabel skenario untuk laporan) | ⏳ Blackbox testing modul dashboard & kuisioner (tabel skenario untuk laporan) | — |
+| **Rab, 29 Jul** | ✅ Perbaikan hasil testing | ⏳ Perbaikan hasil testing | ✅ Persiapan deployment (perintah admin pertama, Turnstile fail-closed, sesi produksi, reverse proxy) |
 | **Kam, 30 Jul** | — | — | ⏳ **Deployment + UAT bersama pembimbing lapangan**; catat masukan |
 | **Jum, 31 Jul** | — | — | ⏳ Perbaikan minor hasil UAT → **SISTEM DINYATAKAN SELESAI** 🎉; 🔍 screenshot semua halaman baru untuk lampiran laporan |
 
