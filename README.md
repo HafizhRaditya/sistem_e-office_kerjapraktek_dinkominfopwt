@@ -239,3 +239,165 @@ ditimpa saat test berjalan, jadi jangan menyimpan apa pun yang berharga di sana.
 `tests/TestCase.php` memiliki safety guard: `migrate:fresh` hanya boleh berjalan
 pada koneksi PostgreSQL dengan nama database berakhiran `_test`. Jangan mengubah
 `DB_DATABASE` test menjadi database development atau production.
+
+---
+
+## 10. Menyiapkan SSO Keycloak (opsional)
+
+Portal memiliki **dua jalur login**. Jalur utama tetap NIP/NIK + kata sandi dan
+selalu berfungsi. Jalur kedua adalah SSO Keycloak (OIDC), yang **hanya aktif bila
+dikonfigurasi**. Melewati seluruh bagian ini sepenuhnya sah: aplikasi berjalan
+normal tanpa Keycloak.
+
+### 10.1 Mendaftarkan client di Keycloak
+
+Pada Keycloak Admin Console, pilih realm yang dipakai (mis. `EOffice`) →
+**Clients** → **Create client**.
+
+| Pengaturan | Nilai | Alasan |
+|---|---|---|
+| Client type | **OpenID Connect** | Bukan SAML |
+| Client ID | `eoffice-portal` | Nilai ini yang diisikan ke `KEYCLOAK_CLIENT_ID` |
+| **Client authentication** | **ON** (confidential) | Portal adalah aplikasi server. Dengan ON, Keycloak menerbitkan *client secret* dan penukaran token terjadi server-ke-server — secret tidak pernah sampai ke browser. Bila OFF (public client), tidak ada secret dan konfigurasi ini **tidak akan jalan** |
+| Authentication flow | **Standard flow** ✅ | Authorization Code Flow. Biarkan *Direct access grants*, *Implicit*, dan *Service accounts* **mati** — tidak dipakai dan hanya memperluas permukaan serang |
+
+Kemudian isi URL pada tab **Settings**:
+
+| Kolom | Development | Produksi (pola) |
+|---|---|---|
+| **Valid redirect URIs** | `http://127.0.0.1:8000/auth/keycloak/callback`<br>`http://localhost:8000/auth/keycloak/callback` | `https://eoffice.banyumaskab.go.id/auth/keycloak/callback` |
+| **Valid post logout redirect URIs** | `http://127.0.0.1:8000/*` | `https://eoffice.banyumaskab.go.id/*` |
+| **Web origins** | `http://127.0.0.1:8000` | `https://eoffice.banyumaskab.go.id` |
+
+Catatan penting:
+
+- **Daftarkan `127.0.0.1` dan `localhost` sebagai entri terpisah.** Keycloak
+  mencocokkan redirect URI sebagai string, bukan sebagai alamat — keduanya tidak
+  dianggap sama meskipun menunjuk mesin yang sama. Bila hanya salah satu yang
+  terdaftar, membuka portal lewat host yang lain akan ditolak Keycloak dengan
+  *"Invalid parameter: redirect_uri"*.
+- **Redirect URI harus sama persis dengan `KEYCLOAK_REDIRECT_URI` di `.env`,**
+  termasuk skema, port, dan tanpa garis miring tambahan di akhir.
+- **Jangan memakai wildcard pada Valid redirect URIs.** Wildcard hanya wajar pada
+  *post logout*, karena tujuan pasca-logout memang bisa beragam.
+- Produksi wajib **HTTPS**. Di produksi `SESSION_SECURE_COOKIE=true` juga harus
+  aktif (lihat `.env.example`).
+
+Setelah client tersimpan, buka tab **Credentials** untuk mengambil *client secret*.
+
+### 10.2 Mengisi `.env`
+
+Lima variabel, seluruhnya **kosong** di `.env.example` dan diisi di `.env` lokal
+masing-masing (`.env` tidak masuk Git):
+
+| Variabel | Diambil dari | Contoh (dev) |
+|---|---|---|
+| `KEYCLOAK_BASE_URL` | Alamat dasar server Keycloak, **tanpa** `/realms/...` | `https://account.dev.banyumaskab.go.id` |
+| `KEYCLOAK_REALM` | Nama realm pada Admin Console | `EOffice` |
+| `KEYCLOAK_CLIENT_ID` | Client ID yang dibuat di 10.1 | `eoffice-portal` |
+| `KEYCLOAK_CLIENT_SECRET` | Tab **Credentials** pada client tersebut | *(rahasia — jangan pernah ditulis di README, `.env.example`, atau commit)* |
+| `KEYCLOAK_REDIRECT_URI` | Harus sama persis dengan salah satu *Valid redirect URIs* | `http://127.0.0.1:8000/auth/keycloak/callback` |
+
+Aplikasi menyusun *issuer* sebagai `KEYCLOAK_BASE_URL` + `/realms/` +
+`KEYCLOAK_REALM`, lalu **menemukan sendiri** seluruh endpoint (authorization,
+token, JWKS, end session) dari dokumen `.well-known/openid-configuration`. Tidak
+ada endpoint yang ditulis manual, sehingga perubahan di sisi Keycloak tidak perlu
+diikuti perubahan kode.
+
+Setelah mengubah `.env`, bersihkan cache konfigurasi:
+
+```bash
+php artisan config:clear
+```
+
+### 10.3 Konvensi pemetaan akun (wajib dibaca)
+
+> **Username akun Keycloak HARUS berisi NIP/NIK pegawai**, sama persis dengan
+> kolom `users.nip_nik` di E-Office.
+
+Saat callback, portal membaca klaim `preferred_username` dari ID token dan
+mencocokkannya ke `users.nip_nik`. Bila username di Keycloak berisi hal lain
+(email, nama, `budi.santoso`), pencocokan gagal dan login ditolak.
+
+**SSO tidak pernah membuat akun baru.** Pegawai harus sudah terdaftar di E-Office
+lebih dulu melalui Panel Admin → Manajemen Pengguna. Identitas yang berhasil
+diautentikasi Keycloak namun tidak dikenal portal akan ditolak dengan pesan:
+
+> *"Akun Keycloak "…" belum terdaftar di E-Office. Hubungi admin OPD."*
+
+Ini keputusan keamanan, bukan keterbatasan: bila portal memprovisikan akun secara
+otomatis, siapa pun yang dapat membuat akun Keycloak otomatis memperoleh akun
+E-Office. Daftar pegawai tetap dikelola admin.
+
+Aturan lain yang berlaku sama dengan jalur kata sandi:
+
+- Akun dengan `is_active = false` **ditolak** walaupun token Keycloak-nya sah.
+- Hak akses aplikasi (RBAC) tidak terpengaruh jalur login — `application_access`
+  tetap penentunya.
+
+**Penautan mengikuti `sub`, bukan NIP.** Saat login SSO pertama berhasil, portal
+menyimpan `sub` (subject Keycloak) ke `users.keycloak_id`. Login berikutnya
+dicocokkan lewat kolom itu lebih dulu. Artinya bila NIP pegawai kelak dikoreksi di
+Keycloak, penautannya tetap utuh — `sub` adalah satu-satunya pengenal yang dijamin
+OIDC stabil dan tidak pernah dipakai ulang, sedangkan NIP adalah data
+administratif yang bisa disunting.
+
+### 10.4 Perilaku saat `KEYCLOAK_*` kosong
+
+**Ini disengaja, bukan kerusakan:**
+
+- Tombol **"Masuk dengan Keycloak"** tidak dirender di halaman login.
+- `/auth/keycloak/redirect` dan `/auth/keycloak/callback` menjawab **404**.
+- Login NIP/NIK berjalan normal seperti biasa.
+
+Tombol dan route sengaja dikunci pada gerbang yang sama. Bila tombol tetap
+ditampilkan tanpa konfigurasi, pengguna akan mengklik tautan mati — persoalan yang
+sama dengan tautan "Lupa password" yang karenanya diturunkan menjadi teks biasa.
+
+**Satu nilai yang hilang sudah cukup untuk mematikan jalur SSO.** Konfigurasi
+setengah jadi tidak akan menghasilkan tombol yang "sebagian jalan"; ia hanya akan
+mengirim pengguna ke perjalanan bolak-balik yang gagal di tengah.
+
+### 10.5 Catatan lingkungan Windows — `OPENSSL_CONF`
+
+Pada instalasi PHP Windows (mis. Laragon), `openssl_pkey_new()` sering gagal
+dengan `error:07000072:configuration file routines::no such file` karena PHP tidak
+menemukan `openssl.cnf`. Yang gagal hanya **pembuatan** kunci; memuat kunci yang
+sudah ada tidak terpengaruh.
+
+**Test kami tidak membutuhkan ini** — `tests/Fixtures/KeycloakTestKeys.php`
+memakai kunci RSA statis yang sudah dibuat sebelumnya, justru supaya `php artisan
+test` berjalan di mesin mana pun tanpa konfigurasi tambahan.
+
+Setel variabel ini hanya bila Anda menjalankan perkakas yang **membuat** kunci RSA
+sendiri (mis. membangkitkan pasangan kunci baru):
+
+```bash
+export OPENSSL_CONF="C:/laragon/bin/php/php-8.4.12-nts-Win32-vs17-x64/extras/ssl/openssl.cnf"
+```
+
+Sesuaikan versi PHP pada path tersebut dengan yang terpasang di mesin Anda.
+
+### 10.6 Setelah menarik perubahan ini (wajib untuk seluruh anggota tim)
+
+`git pull` saja **tidak cukup**. Branch ini mengubah dependensi dan skema:
+
+```bash
+composer install        # dependensi berubah — pustaka OIDC + pergeseran versi
+php artisan migrate     # migration 000014: kolom users.keycloak_id
+```
+
+Melewatkan `php artisan migrate` menimbulkan gejala yang menyesatkan: `php artisan
+test` **tetap hijau** (database test dibangun ulang tiap kali dijalankan)
+sementara database development memunculkan error 500. Bila test hijau tetapi
+aplikasi gagal, migration tertinggal adalah tersangka pertama.
+
+> **Pin sementara pada `composer.json`.** Tiga paket dikunci di versi 7.4:
+> `symfony/console`, `symfony/string`, dan `symfony/http-client`. Tanpa pin
+> tersebut, pemasangan pustaka OIDC ikut menaikkan komponen Symfony ke versi
+> mayor 8 sebagai efek samping — perubahan yang tidak diminta dan tidak diinginkan
+> pada sistem yang sedang dibekukan menjelang serah terima.
+>
+> **Pin ini bersifat SEMENTARA dan dicabut pasca-KP,** saat peningkatan ke Symfony
+> 8 dikerjakan sebagai pekerjaan tersendiri yang direview sadar. Laravel 13 sendiri
+> sudah menerima `^7.4 || ^8.0`, jadi pin ini membekukan waktu, bukan batas teknis.
