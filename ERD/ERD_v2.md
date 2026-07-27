@@ -1,5 +1,11 @@
 # Changelog ERD v1.1 → v2.0 FINAL
 
+> **Amandemen 27 Juli 2026:** kategori aplikasi tidak lagi disimpan pada satu
+> kolom `applications.category`. Master kategori berada di tabel `categories`
+> dan relasi many-to-many berada di `application_category`. Menonaktifkan
+> kategori hanya menyembunyikan kategori dari dashboard; aplikasi dan relasinya
+> tetap tersimpan.
+
 **Tanggal:** Juli 2026 · **Basis:** revisi ERD Umar (via GPT) + penyempurnaan tim · **Database:** PostgreSQL 18 (bukan 17 — sesuaikan README §4)
 **File terdampak:** `schema.sql` (v2.0), `docs/erd/ERD_v2.0_final.png`
 

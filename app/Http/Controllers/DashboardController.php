@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Application;
 use App\Models\Banner;
+use App\Models\Category;
 use App\Models\Questionnaire;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -79,6 +80,10 @@ class DashboardController extends Controller
         $applications = Application::query()
             ->with([
                 'opd',
+                'categories' => fn ($query) => $query
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->orderBy('name'),
                 'links' => fn ($q) => $q->orderBy('sort_order'),
             ])
             ->orderBy('sort_order')
@@ -129,7 +134,11 @@ class DashboardController extends Controller
             'icon' => $a->icon ? asset($a->icon) : null,
             'opd' => optional($a->opd)->code,
             'group' => $a->app_group,
-            'category' => $a->category,
+            'categories' => $a->categories->map(fn (Category $category): array => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+            ])->values(),
             'active' => (bool) $a->is_active,
             'is_new' => (bool) $a->is_new,
             'description' => $a->description,
@@ -150,6 +159,11 @@ class DashboardController extends Controller
             'userStats' => $userStats,
             'heroSlides' => $bannerSlides->values(),
             'popupSlides' => $popupSlides,
+            'dashboardCategories' => Category::query()
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(['id', 'name', 'slug']),
         ]);
     }
 

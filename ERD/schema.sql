@@ -44,6 +44,17 @@ CREATE TABLE users (
 );
 CREATE INDEX idx_users_opd ON users(opd_id);
 
+CREATE TABLE categories (
+    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name        varchar(100) NOT NULL,
+    slug        varchar(100) NOT NULL UNIQUE,
+    is_active   boolean      NOT NULL DEFAULT true,
+    sort_order  integer      NOT NULL DEFAULT 0,
+    created_at  timestamptz  NOT NULL DEFAULT now(),
+    updated_at  timestamptz  NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_categories_active_order ON categories(is_active, sort_order);
+
 CREATE TABLE applications (
     id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     opd_id      bigint       NOT NULL REFERENCES opds(id) ON DELETE RESTRICT,
@@ -53,10 +64,6 @@ CREATE TABLE applications (
     icon        varchar(255),
     app_group   varchar(20)  NOT NULL
                 CHECK (app_group IN ('smartcity','spbe','tools')),
-    category    varchar(30)
-                CHECK (category IN ('governance','economy','kinerja','gawai',
-                                    'rencana','uang','pajak','kesehatan',
-                                    'data','wisata','umum')),
     is_active   boolean      NOT NULL DEFAULT true,
     is_new      boolean      NOT NULL DEFAULT false,
     sort_order  integer      NOT NULL DEFAULT 0,
@@ -64,7 +71,14 @@ CREATE TABLE applications (
     updated_at  timestamptz  NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_applications_opd    ON applications(opd_id);
-CREATE INDEX idx_applications_filter ON applications(app_group, is_active, category);
+CREATE INDEX idx_applications_group_active ON applications(app_group, is_active);
+
+CREATE TABLE application_category (
+    application_id bigint NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+    category_id    bigint NOT NULL REFERENCES categories(id)    ON DELETE CASCADE,
+    PRIMARY KEY (application_id, category_id)
+);
+CREATE INDEX idx_application_category_category ON application_category(category_id);
 
 CREATE TABLE application_links (
     id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

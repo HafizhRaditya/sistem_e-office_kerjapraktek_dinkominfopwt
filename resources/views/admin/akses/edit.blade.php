@@ -20,7 +20,7 @@
         matches(a) {
             const q = this.q.toLowerCase();
             return (this.opd === 'all' || a.opd === this.opd)
-                && (this.cat === 'all' || a.category === this.cat)
+                && (this.cat === 'all' || a.categories.some(category => category.slug === this.cat))
                 && ((a.name + ' ' + (a.opd || '')).toLowerCase().includes(q));
         },
         get visibleCount() { return this.apps.filter(a => this.matches(a)).length; },
@@ -86,7 +86,7 @@
                 <select x-model="cat" class="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15 capitalize">
                     <option value="all">Semua kategori</option>
                     @foreach ($categories as $c)
-                        <option value="{{ $c }}">{{ ucfirst($c) }}</option>
+                        <option value="{{ $c->slug }}">{{ $c->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -100,7 +100,8 @@
                         <div class="min-w-0">
                             <p class="font-medium truncate" x-text="a.name"></p>
                             <p class="text-xs text-slate-400">
-                                <span x-text="a.opd"></span> · <span class="capitalize" x-text="a.category"></span>
+                                <span x-text="a.opd"></span>
+                                <span x-show="a.categories.length > 0"> · <span x-text="a.categories.map(category => category.name + (category.active ? '' : ' (nonaktif)')).join(', ')"></span></span>
                                 <span x-show="!a.active" class="text-red-500"> · Nonaktif</span>
                             </p>
                         </div>

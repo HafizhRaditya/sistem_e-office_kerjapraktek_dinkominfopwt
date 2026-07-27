@@ -34,7 +34,10 @@ new class extends Component
     {
         return [
             'applications' => Application::query()
-                ->with('opd')
+                ->with([
+                    'opd',
+                    'categories' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
+                ])
                 ->withCount('links')
                 ->when($this->q !== '', function ($query) {
                     $term = trim($this->q);
@@ -102,7 +105,15 @@ new class extends Component
                         <td class="px-5 py-3"><span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ optional($app->opd)->code ?? '—' }}</span></td>
                         <td class="px-5 py-3">
                             <span class="font-medium">{{ $groupLabels[$app->app_group] ?? $app->app_group }}</span>
-                            <span class="text-slate-400 capitalize">/ {{ $app->category ?? '—' }}</span>
+                            <div class="mt-1 flex max-w-xs flex-wrap gap-1">
+                                @forelse ($app->categories as $category)
+                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-semibold {{ $category->is_active ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300' : 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-300' }}">
+                                        {{ $category->name }}@unless($category->is_active) · Nonaktif @endunless
+                                    </span>
+                                @empty
+                                    <span class="text-xs text-slate-400">Tanpa kategori</span>
+                                @endforelse
+                            </div>
                         </td>
                         <td class="px-5 py-3">
                             @if ($app->is_active)

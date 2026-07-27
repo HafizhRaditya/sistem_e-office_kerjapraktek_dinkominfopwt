@@ -11,7 +11,7 @@ window.Alpine = Alpine;
  * component only filters and counts (no access logic is decided here — each
  * app already arrives with a server-computed `can_access` flag).
  */
-Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = []) => ({
+Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = [], categories = []) => ({
     apps,
     heroSlides,
     popupSlides,
@@ -20,7 +20,7 @@ Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = []) => ({
     access: 'all',
     cat: 'all',
     q: '',
-    cats: ['governance', 'economy', 'kinerja', 'gawai', 'rencana', 'uang', 'pajak', 'kesehatan', 'data', 'wisata', 'umum'],
+    cats: categories,
     toastMsg: '',
     toastShow: false,
     _toastTimer: null,
@@ -124,7 +124,7 @@ Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = []) => ({
             (this.tab === 'all' || (this.tab === 'baru' ? a.is_new : a.group === this.tab)) &&
             (this.status === 'all' || (this.status === 'on' ? a.active : !a.active)) &&
             (this.access === 'all' || (this.access === 'yes') === a.can_access) &&
-            (this.cat === 'all' || a.category === this.cat) &&
+            (this.cat === 'all' || a.categories.some((category) => category.slug === this.cat)) &&
             (a.name + ' ' + a.opd + ' ' + (a.description || '')).toLowerCase().includes(q)
         );
     },
@@ -157,7 +157,7 @@ Alpine.data('dashboard', (apps, heroSlides = [], popupSlides = []) => ({
         return this.apps.filter((a) => (v === 'all' ? true : (v === 'yes') === a.can_access)).length;
     },
     countCat(c) {
-        return this.apps.filter((a) => a.category === c).length;
+        return this.apps.filter((a) => a.categories.some((category) => category.slug === c)).length;
     },
 
     denied() {
