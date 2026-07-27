@@ -14,7 +14,9 @@ Urutan seksi (paritas sistem lama, gaya visual mengikuti design system Stitch "M
 ### FR-D02 — Tab, filter, pencarian
 - Tab: **Smart City / SPBE / Tools / Aplikasi Baru** (dari `applications.app_group` + `is_new`), dengan jumlah dinamis.
 - Filter status: Semua / Aktif / Tidak Aktif (jumlah dinamis).
-- Filter kategori (11): Governance, Economy, Kinerja, Gawai, Rencana, Uang, Pajak, Kesehatan, Data, Wisata, Umum.
+- Filter kategori berasal dari master `categories` yang berstatus aktif dan diurutkan dengan `sort_order`.
+- Satu aplikasi dapat memiliki lebih dari satu kategori melalui `application_category`.
+- Kategori nonaktif tidak muncul sebagai filter/label dashboard, tetapi aplikasi yang terhubung tetap muncul pada "Semua kategori".
 - Pencarian nama aplikasi, minimal client-side pada data yang sudah difilter akses.
 - **Kriteria:** kombinasi tab+status+kategori+kata kunci bekerja bersamaan; jumlah pada badge SELALU dihitung dari himpunan aplikasi yang boleh diakses user (bukan total sistem) agar tidak membocorkan keberadaan aplikasi lain.
 

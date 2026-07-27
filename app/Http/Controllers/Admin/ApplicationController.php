@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Services\ActivityLogger;
 use App\Support\ActivityType;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
@@ -22,23 +24,19 @@ use Illuminate\Validation\Rule;
  * applications (field decision, Dinkominfo).
  *
  * App-layer validation mirrors the DB constraints so users get friendly
- * Indonesian errors before hitting them: slug UNIQUE, app_group/category CHECK.
+ * Indonesian errors before hitting them: slug UNIQUE and app_group CHECK.
+ * Categories are synchronized through the application_category pivot.
  * Icons can be uploaded to the public disk or referenced through an HTTP(S) URL
  * or a path under public/. Managed uploads are removed when replaced.
  */
 class ApplicationController extends Controller
 {
     private const AUDIT_FIELDS = [
-        'opd_id', 'name', 'slug', 'description', 'icon', 'app_group', 'category',
+        'opd_id', 'name', 'slug', 'description', 'icon', 'app_group',
         'is_active', 'is_new', 'sort_order',
     ];
 
     private const APP_GROUPS = ['smartcity', 'spbe', 'tools'];
-
-    private const CATEGORIES = [
-        'governance', 'economy', 'kinerja', 'gawai', 'rencana', 'uang',
-        'pajak', 'kesehatan', 'data', 'wisata', 'umum',
-    ];
 
     public function __construct(private readonly ActivityLogger $activityLogger) {}
 
@@ -60,17 +58,23 @@ class ApplicationController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        $categoryIds = $this->pullCategoryIds($data);
         $data['icon'] = $this->resolveIconPath($request, null, $data['icon_path'] ?? null);
         $data = $this->withoutIconInputs($data);
 
-        $application = Application::create($data);
+        $application = DB::transaction(function () use ($data, $categoryIds): Application {
+            $application = Application::create($data);
+            $application->categories()->sync($categoryIds);
+
+            return $application;
+        });
 
         $this->activityLogger->record(
             $request,
             ActivityType::APPLICATION_CREATED,
             "Membuat aplikasi \"{$application->name}\".",
             subject: $application,
-            properties: ['after' => $application->only(self::AUDIT_FIELDS)],
+            properties: ['after' => $this->auditState($application)],
         );
 
         return redirect()
@@ -80,15 +84,20 @@ class ApplicationController extends Controller
 
     public function edit(Application $application)
     {
-        $application->load(['opd', 'links' => fn ($q) => $q->orderBy('sort_order')->orderBy('label')]);
+        $application->load([
+            'opd',
+            'categories',
+            'links' => fn ($q) => $q->orderBy('sort_order')->orderBy('label'),
+        ]);
 
-        return view('admin.aplikasi.edit', array_merge($this->formData($application->opd_id), ['application' => $application]));
+        return view('admin.aplikasi.edit', array_merge($this->formData($application), ['application' => $application]));
     }
 
     public function update(Request $request, Application $application)
     {
-        $before = $application->only(self::AUDIT_FIELDS);
+        $before = $this->auditState($application);
         $data = $this->validateData($request, $application);
+        $categoryIds = $this->pullCategoryIds($data);
         $data['icon'] = $this->resolveIconPath(
             $request,
             $application->icon,
@@ -96,8 +105,13 @@ class ApplicationController extends Controller
         );
         $data = $this->withoutIconInputs($data);
 
-        $application->update($data);
-        $changes = $this->activityLogger->changes($before, $application->fresh()->only(self::AUDIT_FIELDS));
+        DB::transaction(function () use ($application, $data, $categoryIds): void {
+            $application->update($data);
+            $application->categories()->sync($categoryIds);
+        });
+
+        $application->refresh();
+        $changes = $this->activityLogger->changes($before, $this->auditState($application));
 
         if ($this->activityLogger->hasChanges($changes)) {
             $this->activityLogger->record(
@@ -114,8 +128,11 @@ class ApplicationController extends Controller
             ->with('status', 'Aplikasi diperbarui.');
     }
 
-    private function formData(?int $currentOpdId = null): array
+    private function formData(?Application $application = null): array
     {
+        $currentOpdId = $application?->opd_id;
+        $currentCategoryIds = $application?->categories->pluck('id')->all() ?? [];
+
         return [
             'opds' => Opd::query()
                 ->where(function ($query) use ($currentOpdId) {
@@ -128,12 +145,24 @@ class ApplicationController extends Controller
                 ->orderBy('name')
                 ->get(),
             'appGroups' => self::APP_GROUPS,
-            'categories' => self::CATEGORIES,
+            'categories' => Category::query()
+                ->where(function ($query) use ($currentCategoryIds): void {
+                    $query->where('is_active', true);
+
+                    if ($currentCategoryIds !== []) {
+                        $query->orWhereIn('id', $currentCategoryIds);
+                    }
+                })
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
         ];
     }
 
     private function validateData(Request $request, ?Application $application = null): array
     {
+        $currentCategoryIds = $application?->categories()->pluck('categories.id')->all() ?? [];
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:150'],
             'opd_id' => [
@@ -179,7 +208,20 @@ class ApplicationController extends Controller
             'icon_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'remove_icon' => ['nullable', 'boolean'],
             'app_group' => ['required', Rule::in(self::APP_GROUPS)],
-            'category' => ['nullable', Rule::in(self::CATEGORIES)],
+            'category_ids' => ['nullable', 'array'],
+            'category_ids.*' => [
+                'integer',
+                'distinct',
+                Rule::exists('categories', 'id')->where(function ($query) use ($currentCategoryIds): void {
+                    $query->where(function ($nested) use ($currentCategoryIds): void {
+                        $nested->where('is_active', true);
+
+                        if ($currentCategoryIds !== []) {
+                            $nested->orWhereIn('id', $currentCategoryIds);
+                        }
+                    });
+                }),
+            ],
             'sort_order' => ['required', 'integer', 'min:0'],
         ], [
             'name.required' => 'Nama aplikasi wajib diisi.',
@@ -194,7 +236,9 @@ class ApplicationController extends Controller
             'icon_file.max' => 'Ukuran ikon maksimal 5 MB.',
             'app_group.required' => 'Grup aplikasi wajib dipilih.',
             'app_group.in' => 'Grup aplikasi tidak valid.',
-            'category.in' => 'Kategori tidak valid.',
+            'category_ids.array' => 'Daftar kategori tidak valid.',
+            'category_ids.*.exists' => 'Salah satu kategori tidak valid atau sudah nonaktif.',
+            'category_ids.*.distinct' => 'Kategori yang sama tidak boleh dipilih lebih dari sekali.',
             'sort_order.required' => 'Urutan wajib diisi.',
             'sort_order.integer' => 'Urutan harus berupa angka.',
         ]);
@@ -203,6 +247,40 @@ class ApplicationController extends Controller
         $validated['is_new'] = $request->boolean('is_new');
 
         return $validated;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<int, int>
+     */
+    private function pullCategoryIds(array &$data): array
+    {
+        $categoryIds = collect($data['category_ids'] ?? [])
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        unset($data['category_ids']);
+
+        return $categoryIds;
+    }
+
+    /** @return array<string, mixed> */
+    private function auditState(Application $application): array
+    {
+        $application->load('categories:id,name');
+
+        return array_merge($application->only(self::AUDIT_FIELDS), [
+            'categories' => $application->categories
+                ->sortBy('name')
+                ->map(fn (Category $category): array => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                ])
+                ->values()
+                ->all(),
+        ]);
     }
 
     /** @param array<string, mixed> $data */

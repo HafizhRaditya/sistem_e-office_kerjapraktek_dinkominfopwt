@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\ActivityLog;
 use App\Models\Application;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Models\User;
 use App\Support\ActivityType;
@@ -130,7 +131,6 @@ class AdminOpdCrudTest extends TestCase
             'description' => null,
             'icon' => null,
             'app_group' => 'spbe',
-            'category' => 'data',
             'is_active' => true,
             'is_new' => false,
             'sort_order' => 999,
@@ -212,7 +212,7 @@ class AdminOpdCrudTest extends TestCase
                 'slug' => 'aplikasi-opd-nonaktif',
                 'description' => null,
                 'app_group' => 'spbe',
-                'category' => 'data',
+                'category_ids' => [Category::where('slug', 'data')->firstOrFail()->id],
                 'sort_order' => 999,
                 'is_active' => '1',
             ])

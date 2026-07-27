@@ -5,36 +5,65 @@ namespace App\Support;
 final class ActivityType
 {
     public const LOGIN_SUCCESS = 'login_success';
+
     public const LOGIN_FAILED = 'login_failed';
+
     public const LOGOUT = 'logout';
+
     public const PASSWORD_CHANGED = 'password_changed';
+
     public const PASSWORD_RESET = 'password_reset';
+
     public const APP_LAUNCHED = 'app_launched';
+
     public const ACCESS_DENIED = 'access_denied';
+
     public const QUIZ_CLICKED = 'quiz_clicked';
 
     public const USER_CREATED = 'user_created';
+
     public const USER_UPDATED = 'user_updated';
+
     public const USER_ACTIVATED = 'user_activated';
+
     public const USER_DEACTIVATED = 'user_deactivated';
+
     public const ACCESS_UPDATED = 'access_updated';
 
     public const OPD_CREATED = 'opd_created';
+
     public const OPD_UPDATED = 'opd_updated';
+
     public const OPD_ACTIVATED = 'opd_activated';
+
     public const OPD_DEACTIVATED = 'opd_deactivated';
 
+    public const CATEGORY_CREATED = 'category_created';
+
+    public const CATEGORY_UPDATED = 'category_updated';
+
+    public const CATEGORY_ACTIVATED = 'category_activated';
+
+    public const CATEGORY_DEACTIVATED = 'category_deactivated';
+
     public const APPLICATION_CREATED = 'application_created';
+
     public const APPLICATION_UPDATED = 'application_updated';
+
     public const APPLICATION_LINK_CREATED = 'application_link_created';
+
     public const APPLICATION_LINK_UPDATED = 'application_link_updated';
 
     public const BANNER_CREATED = 'banner_created';
+
     public const BANNER_UPDATED = 'banner_updated';
+
     public const BANNER_DELETED = 'banner_deleted';
 
     public const QUESTIONNAIRE_CREATED = 'questionnaire_created';
+
     public const QUESTIONNAIRE_UPDATED = 'questionnaire_updated';
+
     public const QUESTIONNAIRE_DELETED = 'questionnaire_deleted';
 
     /** @return array<string, string> */
@@ -60,6 +89,11 @@ final class ActivityType
             self::OPD_UPDATED => 'Ubah OPD',
             self::OPD_ACTIVATED => 'Aktifkan OPD',
             self::OPD_DEACTIVATED => 'Nonaktifkan OPD',
+
+            self::CATEGORY_CREATED => 'Tambah kategori',
+            self::CATEGORY_UPDATED => 'Ubah kategori',
+            self::CATEGORY_ACTIVATED => 'Aktifkan kategori',
+            self::CATEGORY_DEACTIVATED => 'Nonaktifkan kategori',
 
             self::APPLICATION_CREATED => 'Tambah aplikasi',
             self::APPLICATION_UPDATED => 'Ubah aplikasi',

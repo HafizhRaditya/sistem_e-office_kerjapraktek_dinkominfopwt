@@ -4,6 +4,9 @@
     $iconPreview = $iconValue
         ? ((str_starts_with($iconValue, 'http://') || str_starts_with($iconValue, 'https://')) ? $iconValue : asset($iconValue))
         : null;
+    $selectedCategoryIds = collect(old('category_ids', $app?->categories?->pluck('id')->all() ?? []))
+        ->map(fn ($id) => (int) $id)
+        ->all();
 @endphp
 
 @if ($errors->any())
@@ -115,15 +118,30 @@
         @error('app_group') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
     </div>
 
-    <div>
-        <label for="category" class="block text-sm font-medium mb-1.5">Kategori <span class="text-slate-400 font-normal">(opsional)</span></label>
-        <select id="category" name="category" class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2.5 text-sm capitalize focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/15">
-            <option value="">— tanpa kategori —</option>
-            @foreach ($categories as $c)
-                <option value="{{ $c }}" @selected(old('category', $app?->category) === $c)>{{ ucfirst($c) }}</option>
-            @endforeach
-        </select>
-        @error('category') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
+    <div class="sm:col-span-2">
+        <span class="block text-sm font-medium mb-1.5">Kategori <span class="text-slate-400 font-normal">(opsional, dapat memilih lebih dari satu)</span></span>
+        <div class="grid gap-2 rounded-lg border border-slate-300 bg-white p-3 dark:border-slate-700 dark:bg-slate-900 sm:grid-cols-2 lg:grid-cols-3">
+            @forelse ($categories as $category)
+                <label class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800">
+                    <input type="checkbox" name="category_ids[]" value="{{ $category->id }}"
+                        @checked(in_array($category->id, $selectedCategoryIds, true))
+                        class="h-4 w-4 accent-brand">
+                    <span>{{ $category->name }}</span>
+                    @unless ($category->is_active)
+                        <span class="ml-auto rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:bg-red-900/40 dark:text-red-300">Nonaktif</span>
+                    @endunless
+                </label>
+            @empty
+                <p class="text-sm text-slate-400 sm:col-span-2 lg:col-span-3">
+                    Belum ada kategori aktif. Tambahkan kategori melalui menu Manajemen Kategori.
+                </p>
+            @endforelse
+        </div>
+        <p class="mt-1 text-xs text-slate-400">Kategori nonaktif yang sudah terpasang tetap ditampilkan agar dapat dilepas, tetapi tidak muncul sebagai filter dashboard.</p>
+        @error('category_ids') <p class="mt-1 text-xs text-brand">{{ $message }}</p> @enderror
+        @if ($errors->has('category_ids.*'))
+            <p class="mt-1 text-xs text-brand">{{ $errors->first('category_ids.*') }}</p>
+        @endif
     </div>
 
     <div>

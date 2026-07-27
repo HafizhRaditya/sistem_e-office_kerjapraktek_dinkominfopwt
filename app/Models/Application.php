@@ -21,7 +21,6 @@ class Application extends Model
         'description',
         'icon',
         'app_group',
-        'category',
         'is_active',
         'is_new',
         'sort_order',
@@ -49,6 +48,11 @@ class Application extends Model
     public function visits(): HasMany
     {
         return $this->hasMany(ApplicationVisit::class);
+    }
+
+    public function categories(): BelongsToMany
+    {
+        return $this->belongsToMany(Category::class, 'application_category');
     }
 
     /** Users granted access to this application. */

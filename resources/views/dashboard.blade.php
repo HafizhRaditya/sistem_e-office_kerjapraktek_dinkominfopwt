@@ -3,7 +3,7 @@
 @section('title', 'Dashboard')
 
 @section('content')
-<div x-data="dashboard(@js($apps), @js($heroSlides ?? []), @js($popupSlides ?? []))">
+<div x-data="dashboard(@js($apps), @js($heroSlides ?? []), @js($popupSlides ?? []), @js($dashboardCategories ?? []))">
 
     {{-- ======= Hero (red brand surface) ======= --}}
     <section class="relative overflow-hidden bg-slate-900 text-white"
@@ -275,10 +275,10 @@
                     :class="cat === 'all' ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'">
                     Semua kategori
                 </button>
-                <template x-for="c in cats" :key="'cat-' + c">
-                    <button @click="cat = c" class="px-3 py-1.5 rounded-full text-xs font-medium border transition"
-                        :class="cat === c ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'">
-                        <span x-text="label(c) + ' (' + countCat(c) + ')'"></span>
+                <template x-for="c in cats" :key="'cat-' + c.id">
+                    <button @click="cat = c.slug" class="px-3 py-1.5 rounded-full text-xs font-medium border transition"
+                        :class="cat === c.slug ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-400'">
+                        <span x-text="c.name + ' (' + countCat(c.slug) + ')'"></span>
                     </button>
                 </template>
             </div>
@@ -340,7 +340,10 @@
                                     </template>
                                 </h3>
                                 <p class="text-xs text-slate-400">
-                                    <span x-text="a.description"></span> · <span class="capitalize" x-text="a.category"></span>
+                                    <span x-text="a.description"></span>
+                                    <template x-if="a.categories.length > 0">
+                                        <span> · <span x-text="a.categories.map((category) => category.name).join(', ')"></span></span>
+                                    </template>
                                 </p>
                             </div>
                         </div>

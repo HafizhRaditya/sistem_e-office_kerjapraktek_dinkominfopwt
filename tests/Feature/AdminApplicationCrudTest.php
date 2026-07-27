@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\Category;
 use App\Models\Opd;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
@@ -45,7 +46,7 @@ class AdminApplicationCrudTest extends TestCase
             'slug' => 'uji-aplikasi',
             'description' => 'Aplikasi untuk pengujian.',
             'app_group' => 'spbe',
-            'category' => 'data',
+            'category_ids' => [Category::where('slug', 'data')->firstOrFail()->id],
             'sort_order' => 99,
             'is_active' => '1',
         ], $overrides);
@@ -85,7 +86,7 @@ class AdminApplicationCrudTest extends TestCase
         $this->assertNotNull($app);
         $this->assertSame('Uji Aplikasi', $app->name);
         $this->assertSame('spbe', $app->app_group);
-        $this->assertSame('data', $app->category);
+        $this->assertSame(['data'], $app->categories()->pluck('slug')->all());
         $this->assertTrue($app->is_active);
         $this->assertFalse($app->is_new); // checkbox absent => false
     }
@@ -104,11 +105,33 @@ class AdminApplicationCrudTest extends TestCase
             ->post(route('admin.aplikasi.store'), $this->payload([
                 'slug' => 'uji-salah',
                 'app_group' => 'bogus',
-                'category' => 'bogus',
+                'category_ids' => [999999999],
             ]))
-            ->assertSessionHasErrors(['app_group', 'category']);
+            ->assertSessionHasErrors(['app_group', 'category_ids.0']);
 
         $this->assertNull(Application::where('slug', 'uji-salah')->first());
+    }
+
+    public function test_admin_can_assign_multiple_categories_to_an_application(): void
+    {
+        $categoryIds = Category::whereIn('slug', ['data', 'governance'])
+            ->orderBy('slug')
+            ->pluck('id')
+            ->all();
+
+        $this->actingAs($this->admin())
+            ->post(route('admin.aplikasi.store'), $this->payload([
+                'slug' => 'uji-banyak-kategori',
+                'category_ids' => $categoryIds,
+            ]))
+            ->assertSessionHasNoErrors();
+
+        $application = Application::where('slug', 'uji-banyak-kategori')->firstOrFail();
+
+        $this->assertEqualsCanonicalizing(
+            ['data', 'governance'],
+            $application->categories()->pluck('slug')->all(),
+        );
     }
 
     public function test_admin_can_update_an_application(): void
@@ -309,5 +332,4 @@ class AdminApplicationCrudTest extends TestCase
 
         $this->assertNull(Application::where('slug', 'uji-icon-tidak-aman')->first());
     }
-
 }
