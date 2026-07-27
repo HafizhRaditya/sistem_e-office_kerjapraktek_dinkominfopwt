@@ -42,4 +42,18 @@ return [
         'secret' => env('TURNSTILE_SECRET'),
     ],
 
+    // Keycloak SSO (OIDC) — a SECOND login path beside NIP/NIK; the local
+    // password login is unchanged. Read by socialiteproviders/keycloak, which
+    // builds its endpoints from base_url + realms. Leaving client_id/secret
+    // empty disables the "Masuk dengan Keycloak" button (the AuthController gate
+    // and the login view both check config('services.keycloak.client_id')), so a
+    // fresh checkout without Keycloak keys still runs on password login alone.
+    'keycloak' => [
+        'client_id' => env('KEYCLOAK_CLIENT_ID'),
+        'client_secret' => env('KEYCLOAK_CLIENT_SECRET'),
+        'redirect' => env('KEYCLOAK_REDIRECT_URI'),
+        'base_url' => env('KEYCLOAK_BASE_URL'),
+        'realms' => env('KEYCLOAK_REALM'),
+    ],
+
 ];
