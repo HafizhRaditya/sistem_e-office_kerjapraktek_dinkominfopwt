@@ -18,6 +18,16 @@ class User extends Authenticatable
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
 
+    /**
+     * NOTE: `keycloak_id` is deliberately NOT fillable.
+     *
+     * It is the binding between an external Keycloak identity and this local
+     * account, so being able to set it is equivalent to being able to take the
+     * account over. Keeping it out of mass assignment means no request payload
+     * can ever reach it — not through today's controllers, and not through a
+     * future `update($request->all())` written by someone who did not know.
+     * The SSO callback assigns it explicitly on the model instead.
+     */
     protected $fillable = [
         'opd_id',
         'nip_nik',
