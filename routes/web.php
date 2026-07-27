@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\QuestionnaireController as AdminQuestionnaireCont
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\KeycloakController;
 use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\QuestionnaireController;
@@ -23,6 +24,11 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 // Auth (basic — full auth module lands later). showLogin() redirects logged-in users.
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
+
+// Keycloak SSO — second login path beside NIP/NIK. Both actions 404 when the
+// KEYCLOAK_* config is absent, so an unconfigured deployment exposes nothing.
+Route::get('/auth/keycloak/redirect', [KeycloakController::class, 'redirect'])->name('keycloak.redirect');
+Route::get('/auth/keycloak/callback', [KeycloakController::class, 'callback'])->name('keycloak.callback');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');

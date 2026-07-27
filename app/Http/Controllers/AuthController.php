@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\KeycloakOidcService;
 use App\Support\ActivityType;
+use App\Support\AuthLanding;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -13,13 +15,17 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 /**
  * Authentication module (FR-A01..A12). Login identity is `nip_nik` (not email).
  */
 class AuthController extends Controller
 {
-    public function __construct(private readonly ActivityLogger $activityLogger) {}
+    public function __construct(
+        private readonly ActivityLogger $activityLogger,
+        private readonly KeycloakOidcService $keycloak,
+    ) {}
 
     /** Max failed attempts per (nip_nik + IP) within the decay window. */
     private const MAX_ATTEMPTS = 5;
@@ -131,9 +137,8 @@ class AuthController extends Controller
      */
     private function homeFor(User $user): string
     {
-        return $user->isAdmin()
-            ? route('admin.akses.index')
-            : route('dashboard');
+        // Shared with the Keycloak callback so both login paths land identically.
+        return AuthLanding::homeFor($user);
     }
 
     public function logout(Request $request)
@@ -146,9 +151,32 @@ class AuthController extends Controller
             subject: $user,
         );
 
+        // Read before invalidate() — that call wipes the session, including the
+        // ID token we need as id_token_hint.
+        $idToken = $request->session()->get(KeycloakOidcService::SESSION_ID_TOKEN);
+
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        // Sessions that came in through SSO must also be ended at Keycloak;
+        // otherwise "Masuk dengan Keycloak" would silently sign the user right
+        // back in, which does not look like a logout to them.
+        //
+        // The local logout above has already happened, so anything failing here
+        // (Keycloak unreachable, no end_session endpoint) degrades to a plain
+        // local logout instead of trapping the user in a signed-in state.
+        if (filled($idToken)) {
+            try {
+                $endSessionUrl = $this->keycloak->endSessionUrl($idToken, route('login'));
+
+                if ($endSessionUrl !== null) {
+                    return redirect()->away($endSessionUrl);
+                }
+            } catch (Throwable $e) {
+                Log::warning('Keycloak: gagal menyusun URL end_session saat logout.', ['exception' => $e]);
+            }
+        }
 
         return redirect()->route('login');
     }

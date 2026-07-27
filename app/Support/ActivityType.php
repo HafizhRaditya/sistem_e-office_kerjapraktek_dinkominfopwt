@@ -8,6 +8,9 @@ final class ActivityType
 
     public const LOGIN_FAILED = 'login_failed';
 
+    /** Successful login through the Keycloak SSO path (vs. the NIP/NIK form). */
+    public const LOGIN_SSO = 'login_sso';
+
     public const LOGOUT = 'logout';
 
     public const PASSWORD_CHANGED = 'password_changed';
@@ -72,6 +75,7 @@ final class ActivityType
         return [
             self::LOGIN_SUCCESS => 'Login berhasil',
             self::LOGIN_FAILED => 'Login gagal',
+            self::LOGIN_SSO => 'Login SSO (Keycloak)',
             self::LOGOUT => 'Logout',
             self::PASSWORD_CHANGED => 'Ubah kata sandi',
             self::PASSWORD_RESET => 'Reset kata sandi',
