@@ -38,7 +38,13 @@ class AuthController extends Controller
             return redirect()->to($this->homeFor(Auth::user()));
         }
 
-        return view('auth.login');
+        // The SSO button is rendered only when Keycloak is actually configured.
+        // Its route 404s otherwise, so an unconditional button would be a dead
+        // link on every environment without KEYCLOAK_* set — the same trap the
+        // "Lupa kata sandi" link was turned into plain text to avoid.
+        return view('auth.login', [
+            'keycloakEnabled' => $this->keycloak->isEnabled(),
+        ]);
     }
 
     public function login(Request $request)

@@ -103,6 +103,30 @@
                 </button>
             </form>
 
+            {{-- ======= Second login path: Keycloak SSO =======
+                 Rendered only when KEYCLOAK_* is configured. The route itself
+                 404s when it is not, so an unconditional button would be a dead
+                 link — the same dead end the "Lupa kata sandi" link was turned
+                 into plain text to avoid. NIP/NIK above stays the primary path:
+                 this one is deliberately the quieter, outlined button. --}}
+            @if ($keycloakEnabled ?? false)
+                <div class="mt-7 flex items-center gap-3" aria-hidden="true">
+                    <span class="h-px flex-1 bg-slate-200"></span>
+                    <span class="text-xs font-medium uppercase tracking-widest text-slate-400">atau</span>
+                    <span class="h-px flex-1 bg-slate-200"></span>
+                </div>
+
+                <a href="{{ route('keycloak.redirect') }}"
+                    class="mt-7 flex w-full items-center justify-center gap-2 rounded-lg border border-brand/40 bg-white px-4 py-3 text-sm font-semibold tracking-wide text-brand transition hover:border-brand hover:bg-brand/5 focus:outline-none focus:ring-2 focus:ring-brand/20">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">shield_person</span>
+                    <span class="truncate">MASUK DENGAN KEYCLOAK</span>
+                </a>
+
+                <p class="mt-2 text-center text-xs text-slate-400">
+                    Gunakan akun SSO Pemerintah Kabupaten Banyumas.
+                </p>
+            @endif
+
             <p class="mt-10 text-center text-xs text-slate-400">
                 © {{ date('Y') }} Dinkominfo Kabupaten Banyumas. Seluruh hak cipta dilindungi.
             </p>
