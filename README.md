@@ -132,15 +132,30 @@ sistem_e-office_kerjapraktek_dinkominfopwt/
 
 ## 8. Status & Timeline
 
-Lihat **ROADMAP.md** untuk rencana harian. Ringkasan fase:
+Lihat **ROADMAP.md** untuk rencana harian, rincian pekerjaan per fase, dan daftar
+sisa pekerjaan. Ringkasan fase — status ditentukan dari **bukti di repo** (berkas,
+controller, migration, test), bukan dari rencana:
 
 | Fase | Periode | Target | Status |
 |---|---|---|---|
 | 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
 | 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | ✅ selesai |
-| 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ✅ selesai |
-| 3 — Integrasi & UAT | 28–31 Jul | Kategori dinamis, Keycloak PoC, UAT | 🔄 berjalan |
-| 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ |
+| 2 — Fitur inti | 21–25 Jul | Panel admin lengkap (akses, aplikasi, tautan, pengguna, OPD, ringkasan) + kuisioner & statistik | ✅ selesai |
+| 3 — Integrasi & UAT | 28–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
+| 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ belum |
+
+**Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis
+sudah rampung — manajemen kategori, SSO Keycloak, kesiapan deployment, serta
+**178 test lolos (929 assertion)** — tetapi **deployment nyata dan UAT bersama
+pembimbing lapangan belum dilakukan**.
+
+Sisa pekerjaan sampai akhir KP (pemilik lengkap ada di ROADMAP.md): deployment ·
+UAT · tabel blackbox modul dashboard & kuisioner (MAU) · uji tampilan responsif
+(MAU) · aplikasi peraga SSO · laporan masing-masing · serah terima.
+
+> **Kegiatan di luar repo** — demo internal, presentasi, UAT, uji manual, dan status
+> penulisan laporan — ditandai 🔍 di ROADMAP dan sengaja **tidak** diberi status
+> selesai, karena tidak dapat diverifikasi dari kode.
 
 ---
 
