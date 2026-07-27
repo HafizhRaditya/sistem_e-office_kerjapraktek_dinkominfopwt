@@ -9,12 +9,15 @@
 
 | Hal | Keterangan |
 |---|---|
-| Tanggal uji | 22 Juli 2026 |
-| Commit diuji | `1a11ad3` + branch `feat/reset-password-polish` |
-| Stack | Laravel 13 · PHP 8.4.12 · PostgreSQL 18.4 |
+| Tanggal uji | 27 Juli 2026 (pembaruan; pengujian awal 22 Juli 2026) |
+| Commit diuji | branch `feat/keycloak-sso` di atas `0825169` |
+| Stack | Laravel 13.19 · PHP 8.4.12 · PostgreSQL 18.4 |
 | Basis data uji | `sistem_eoffice_test` (terpisah dari `sistem_eoffice` pengembangan) |
 | Perintah | `php artisan test` |
-| Hasil suite | **116 test lolos, 0 gagal, 596 assertion** |
+| Hasil suite | **178 test lolos, 0 gagal, 929 assertion** |
+
+> Riwayat: 116 test (22 Juli, sebelum modul SSO) → 155 (tombol SSO) → **178**
+> setelah alur SSO Keycloak diuji penuh.
 
 Akun uji dari seeder (`EofficeV21Seeder`), seluruh sandi `password`:
 
@@ -96,7 +99,51 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
 
 ---
 
-## 4. Catatan Interpretasi (untuk pembahasan Bab 4)
+## 4. Tabel Pengujian SSO KEYCLOAK (SSO-01 – SSO-18)
+
+Jalur login **kedua** di samping NIP/NIK. Seluruh baris **terverifikasi otomatis**
+oleh `KeycloakSsoLoginTest` (23 test) dan `KeycloakLoginButtonTest` (5 test).
+
+> **Tidak ada test yang menghubungi Keycloak sungguhan.** Discovery, JWKS, dan
+> token endpoint dilayani handler HTTP lokal; ID token ditandatangani memakai
+> kunci uji statis pada `tests/Fixtures/KeycloakTestKeys.php`. Karena
+> penandatanganan dan verifikasinya nyata, token bertanda tangan salah memang
+> **gagal diverifikasi**, bukan diloloskan oleh stub.
+
+| No | Skenario | Langkah Uji | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **SSO-01** | Login SSO pertama kali, NIP cocok | Klik **Masuk dengan Keycloak** → Keycloak mengembalikan token sah dengan `preferred_username = 3302010000000001` | Login berhasil, `keycloak_id` terisi `sub`, `last_login_at` diperbarui, dicatat `login_sso`, diarahkan ke `/dashboard` | Sesuai — `keycloak_id` = `kc-subject-0001`, `last_login_at` terisi, baris `login_sso` tercatat, pengalihan ke `/dashboard` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-02** | Login berikutnya memakai `sub`, bukan NIP | Akun sudah tertaut → token datang dengan `preferred_username` yang **sudah berubah** dan tidak cocok akun mana pun | Tetap login ke akun yang sama lewat `keycloak_id`; `properties.matched_by = keycloak_id` | Sesuai — login berhasil walau NIP tak dikenal, `matched_by` = `keycloak_id` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-03** | Identitas Keycloak tidak terdaftar | Token sah dengan `preferred_username = 9999999999999999` | Ditolak: "Akun Keycloak … belum terdaftar di E-Office. Hubungi admin OPD." **Tidak ada akun baru dibuat**, dicatat `login_failed` | Sesuai — jumlah baris `users` **tidak berubah**, tidak ada baris ber-NIP tersebut, `login_failed` tercatat dengan `subject_label` identitas itu | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-04** | Akun nonaktif ditolak walau token sah | `is_active = false` → callback dengan token sah | Ditolak: "Akun Anda dinonaktifkan. Hubungi admin OPD." (kalimat sama dengan jalur kata sandi), akun **tidak** ditautkan | Sesuai — tetap tamu, `keycloak_id` tetap kosong | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-05** | Akun sudah tertaut ke `sub` lain | Akun menyimpan `sub` lama → Keycloak mengirim `sub` berbeda untuk NIP yang sama | Ditolak dengan pesan jelas; tautan lama **tidak** ditimpa diam-diam | Sesuai — `keycloak_id` tetap `kc-subject-LAMA` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-06** | Konflik identitas bukan error 500 | Ulangi SSO-05, periksa kode status HTTP | Respons **302** (penolakan), bukan 500 | Sesuai — status 302 | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-07** | Tabrakan UNIQUE saat penautan (race) | Dua callback untuk `sub` sama tiba bersamaan; pesaing menautkan lebih dulu di antara pembacaan dan penulisan | Kalah lomba ditangani sebagai penolakan berpesan Indonesia, **bukan 500**; `sub` tetap milik pemenang | Sesuai — status 302, `sub` tetap pada akun pemenang, akun yang kalah tetap tak tertaut, `login_failed` tercatat | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-08** | Token bertanda tangan kunci asing | Token ditandatangani kunci lain dengan **`kid` yang sama** | Ditolak — penolakan harus berasal dari tanda tangan, bukan sekadar `kid` berbeda | Sesuai — ditolak, log mencatat `InvalidTokenException` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-09** | `iss` (penerbit) salah | Token dari issuer `https://evil.test/realms/Other` | Ditolak | Sesuai — ditolak, log mencatat `InvalidTokenClaimException` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-10** | `aud` (audiens) salah | `aud` diisi `aplikasi-lain` | Ditolak — token milik klien lain tidak boleh diterima | Sesuai | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-11** | Token kedaluwarsa | `exp` satu jam lampau | Ditolak | Sesuai — ditolak, log mencatat `InvalidTokenClaimException` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-12** | `nonce` tidak cocok (anti *replay*) | Token membawa `nonce` berbeda dari yang disimpan di sesi | Ditolak | Sesuai | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-13** | `state` tidak cocok (anti CSRF) | Callback membawa `state` penyerang | Ditolak sebelum penukaran token | Sesuai | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-14** | Callback tanpa sesi | Panggil `/auth/keycloak/callback` tanpa `state`/`nonce` di sesi | Ditolak — callback lama tidak dapat diputar ulang | Sesuai | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-15** | Logout mengakhiri sesi Keycloak | Login SSO → `POST /logout` | Sesi lokal berakhir **dan** dialihkan ke `end_session_endpoint` beserta `id_token_hint` + `post_logout_redirect_uri`; dicatat `logout` | Sesuai — pengalihan memuat `/protocol/openid-connect/logout`, `id_token_hint`, dan `post_logout_redirect_uri`; kembali menjadi tamu | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-16** | Logout tetap berhasil saat Keycloak mati | Keycloak tidak dapat dihubungi → `POST /logout` | Turun menjadi logout lokal biasa: sesi tetap berakhir, dialihkan ke `/login` — pengguna tidak terjebak dalam keadaan masih masuk | Sesuai — tetap dialihkan ke `/login`, kembali menjadi tamu | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-17** | Permulaan alur mengirim `state` + `nonce` | Buka `/auth/keycloak/redirect` | Dialihkan ke `authorization_endpoint` membawa `client_id`, `scope`, `state`, `nonce`; keduanya tersimpan di sesi | Sesuai — seluruh parameter ada pada URL, `state` dan `nonce` tersimpan di sesi | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-18** | Jalur SSO mati total tanpa konfigurasi | Kosongkan `KEYCLOAK_*` → buka `/login`, `/auth/keycloak/redirect`, `/auth/keycloak/callback` | Tombol **tidak** dirender; kedua route menjawab **404** | Sesuai — tombol absen, kedua route 404; tombol juga absen bila hanya `client_secret` yang hilang | ✅ Lolos (otomatis)<br>`KeycloakLoginButtonTest`, `KeycloakSsoLoginTest` |
+
+### Regresi jalur lama (wajib: SSO tidak boleh merusak login NIP/NIK)
+
+| No | Skenario | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|
+| **SSO-R1** | Login NIP/NIK tetap berfungsi | Login berhasil ke `/dashboard`; `keycloak_id` **tidak** tersentuh | Sesuai — login berhasil, `keycloak_id` tetap kosong | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-R2** | Rate limiting masih utuh | Setelah 5 percobaan gagal, percobaan dengan sandi **benar** tetap diblokir | Sesuai — tetap tamu, galat pada field `nip_nik` | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-R3** | Turnstile masih utuh | Token Turnstile yang gagal verifikasi tetap menolak login | Sesuai — galat pada field `turnstile`, tetap tamu | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+| **SSO-R4** | Form NIP/NIK tidak digantikan | Tombol SSO tampil **berdampingan**, bukan menggantikan | Sesuai — `nip_nik`, `password`, dan tombol **MASUK SEKARANG** tetap ada bersama tombol SSO | ✅ Lolos (otomatis)<br>`KeycloakLoginButtonTest` |
+| **SSO-R5** | Logout jalur kata sandi tidak berubah | Tanpa `id_token` di sesi, logout tetap mengarah ke `/login` | Sesuai | ✅ Lolos (otomatis)<br>`KeycloakSsoLoginTest` |
+
+---
+
+## 5. Catatan Interpretasi (untuk pembahasan Bab 4)
 
 1. **RBAC-11 s.d. RBAC-14 bersama-sama membuktikan satu aturan desain:** admin
    menembus *izin* (tidak memerlukan baris `application_access`), tetapi **tidak**
@@ -116,8 +163,9 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
    menutup klaim: *panel menulis baris X* **dan** *baris X langsung berlaku dalam
    sesi berjalan*.
 
-4. **Cakupan pengujian otomatis: 100%.** Seluruh **32 skenario** pada dokumen ini
-   (AUT-01…16 dan RBAC-01…14) terverifikasi oleh test otomatis. Kesenjangan yang
+4. **Cakupan pengujian otomatis: 100%.** Seluruh **55 skenario** pada dokumen ini
+   (AUT-01…16, RBAC-01…14, SSO-01…18, dan SSO-R1…R5) terverifikasi oleh test
+   otomatis. Kesenjangan yang
    sempat ada — jalur *kegagalan* login (sandi salah, NIP tak dikenal, field kosong,
    rate limit, akun nonaktif), logout, dan seluruh fitur ubah sandi — ditutup dengan
    menambahkan `AuthenticationTest` (7 test) dan `ChangePasswordTest` (6 test).
@@ -144,3 +192,49 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
    pengembangan. Pada pengujian otomatis, endpoint verifikasinya dipalsukan
    (`Http::fake`) dan `phpunit.xml` memakai kunci placeholder, sehingga seluruh alur
    login tetap dapat diuji tanpa memanggil layanan luar.
+
+9. **`sub` bersifat otoritatif pada penautan SSO.** Urutan pencocokan adalah
+   `users.keycloak_id` lebih dulu, baru `users.nip_nik`. Bila `preferred_username`
+   kelak berubah di Keycloak — koreksi NIP, mutasi antar-OPD — penautan **tetap
+   mengikuti `sub`** (SSO-02). Alasannya: `sub` adalah satu-satunya pengenal yang
+   dijamin OIDC stabil dan tidak pernah dipakai ulang, sedangkan NIP adalah data
+   administratif yang bisa disunting di kedua direktori. Mempercayai NIP di atas
+   `sub` berarti penyuntingan NIP dapat diam-diam mengarahkan satu identitas
+   Keycloak ke akun pegawai lain.
+
+10. **SSO tidak pernah membuat akun (SSO-03).** Daftar pegawai dikelola admin.
+    Bila portal memprovisikan akun secara otomatis, siapa pun yang dapat membuat
+    akun Keycloak otomatis memperoleh akun E-Office. Karena itu identitas yang
+    berhasil diautentikasi Keycloak namun tidak dikenal portal **ditolak**, dan
+    test menegakkannya dengan memeriksa jumlah baris `users` tidak berubah.
+
+11. **Tabrakan UNIQUE ditangani basis data, bukan pemeriksaan awal (SSO-07).**
+    Versi pertama memakai pemeriksaan "apakah `sub` sudah dipakai akun lain?"
+    sebelum menulis. Pemeriksaan itu ternyata **tidak pernah dapat tereksekusi**
+    (bila pembacaan lewat `keycloak_id` gagal, berarti belum ada yang memakainya)
+    sekaligus **tidak menutup** celah waktu antara pembacaan dan penulisan. Kini
+    penulisannya dibungkus `try/catch` atas `UniqueConstraintViolationException`
+    sehingga basis data yang memutuskan.
+    Satu perilaku PostgreSQL menjadi penentu di sini: statement yang gagal
+    **membatalkan seluruh transaksi**, sehingga setiap query sesudahnya gagal
+    dengan `SQLSTATE[25P02]`. Tanpa penanganan, pencatatan `login_failed` di dalam
+    blok `catch` ikut gagal dan penolakan kembali berubah menjadi error 500.
+    Karena itu penulisan dibungkus `DB::transaction()` agar memperoleh *savepoint*
+    tersendiri. Perilaku ini diverifikasi dengan *mutation testing*: savepoint
+    dilepas sementara, dan test SSO-07 langsung gagal dengan **500** alih-alih
+    302 — membuktikan savepoint itulah yang menegakkan properti tersebut.
+
+12. **Tombol SSO hanya muncul bila terkonfigurasi (SSO-18).** Route SSO menjawab
+    404 ketika `KEYCLOAK_*` kosong, sehingga tombol tanpa syarat akan menjadi
+    tautan mati di lingkungan yang belum dikonfigurasi. Ini pertimbangan yang sama
+    dengan tautan "Lupa password" pada butir 5. Test mengunci tombol dan route-nya
+    sebagai satu pasangan agar keduanya tidak dapat lepas sinkron.
+
+13. **Verifikasi tanda tangan diuji sungguhan, bukan disimulasikan.** Kunci uji
+    statis pada `tests/Fixtures/` dipakai untuk menandatangani ID token secara
+    nyata, dan kunci "penyerang" sengaja memakai `kid` yang sama dengan kunci
+    realm — sehingga penolakan pada SSO-08 hanya mungkin berasal dari tanda tangan
+    yang tidak cocok. Keaslian penolakan diperiksa melalui jenis exception yang
+    tercatat di log: SSO-08 menghasilkan `InvalidTokenException` (kegagalan tanda
+    tangan) sedangkan SSO-09/SSO-11 menghasilkan `InvalidTokenClaimException`
+    (kegagalan klaim) — berbeda sesuai mode kegagalannya, bukan sekadar "gagal".

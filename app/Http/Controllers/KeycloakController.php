@@ -7,7 +7,9 @@ use App\Services\ActivityLogger;
 use App\Services\KeycloakOidcService;
 use App\Support\ActivityType;
 use App\Support\AuthLanding;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -96,8 +98,15 @@ class KeycloakController extends Controller
             ]);
         }
 
-        // Link priority: the stored subject wins. It survives an NIP correction
-        // in either directory, which `preferred_username` would not.
+        // Link priority: the stored subject wins — `sub` is AUTHORITATIVE.
+        //
+        // Design decision: if `preferred_username` later changes in Keycloak (an
+        // NIP correction, a transfer between OPD), the link still follows `sub`,
+        // and the account resolved is the one that subject was bound to. `sub` is
+        // the only identifier OIDC guarantees to be stable and never reassigned;
+        // an NIP is administrative data that can be edited in either directory.
+        // Trusting the NIP over the subject would mean an NIP edit could silently
+        // point a Keycloak identity at a different employee's account.
         $user = User::where('keycloak_id', $subject)->first();
         $matchedBy = 'keycloak_id';
 
@@ -137,19 +146,6 @@ class KeycloakController extends Controller
             ]);
         }
 
-        if (User::where('keycloak_id', $subject)->whereKeyNot($user->getKey())->exists()) {
-            $this->activityLogger->record(
-                $request,
-                ActivityType::LOGIN_FAILED,
-                "Login SSO ditolak: identitas Keycloak sudah tertaut ke akun lain (dari {$username}).",
-                subject: $user,
-            );
-
-            return redirect()->route('login')->withErrors([
-                'keycloak' => 'Identitas Keycloak ini sudah tertaut ke akun E-Office lain. Hubungi admin OPD.',
-            ]);
-        }
-
         // Same rule as the password path: a deactivated account cannot log in,
         // no matter how valid the token is.
         if (! $user->is_active) {
@@ -169,7 +165,34 @@ class KeycloakController extends Controller
         // $fillable on purpose (see App\Models\User).
         $user->keycloak_id = $subject;
         $user->last_login_at = now(); // FR-A01, same as the password path
-        $user->save();
+
+        try {
+            // Wrapped so the write gets its own savepoint. PostgreSQL aborts the
+            // WHOLE transaction on a failed statement — every later query then
+            // fails with 25P02 "current transaction is aborted". Without the
+            // savepoint the activity-log write in the catch block below would be
+            // the next casualty, and the refusal would turn back into a 500.
+            DB::transaction(static fn () => $user->save());
+        } catch (UniqueConstraintViolationException $e) {
+            // `keycloak_id` is UNIQUE. Checking for a clash before writing would
+            // still leave a gap between the check and the write, so the database
+            // is the only thing that can decide this without a race: two
+            // callbacks for the same subject arriving together both see a free
+            // slot, and one of them loses here. Catching it turns what would be
+            // a 500 into a plain refusal the admin can act on.
+            Log::warning('Keycloak: sub sudah tertaut ke akun lain.', ['exception' => $e]);
+
+            $this->activityLogger->record(
+                $request,
+                ActivityType::LOGIN_FAILED,
+                "Login SSO ditolak: identitas Keycloak sudah tertaut ke akun E-Office lain (dari {$username}).",
+                subject: $user,
+            );
+
+            return redirect()->route('login')->withErrors([
+                'keycloak' => 'Identitas Keycloak ini sudah tertaut ke akun E-Office lain. Hubungi admin OPD.',
+            ]);
+        }
 
         Auth::login($user);
         $request->session()->regenerate();

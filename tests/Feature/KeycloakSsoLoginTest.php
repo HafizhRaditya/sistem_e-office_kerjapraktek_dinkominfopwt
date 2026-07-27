@@ -9,7 +9,7 @@ use App\Support\ActivityType;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Response;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Jose\Component\Core\AlgorithmManager;
 use Jose\Component\Core\JWK;
 use Jose\Component\Signature\Algorithm\RS256;
@@ -274,6 +274,61 @@ class KeycloakSsoLoginTest extends TestCase
         $response = $this->hitCallback();
 
         $this->assertSame(302, $response->getStatusCode(), 'konflik harus jadi redirect, bukan 500');
+    }
+
+    /**
+     * The TOCTOU race: two callbacks for the same subject arrive together, both
+     * see the subject unclaimed, and one loses at the UNIQUE index. Checking
+     * before writing cannot close that window — only the database can — so the
+     * violation must surface as a refusal, never as a 500.
+     */
+    public function test_unique_violation_while_linking_is_refused_not_a_server_error(): void
+    {
+        $user = $this->pegawai();
+        $rival = User::where('nip_nik', '3302010000000002')->firstOrFail();
+
+        $this->fakeKeycloak();
+
+        // Stand in for the competing callback: claim the subject for another
+        // account in the window between our lookup and our write.
+        //
+        // It hooks `retrieved` rather than `saving` deliberately — `saving` fires
+        // inside the savepoint the controller opens, so the rollback would undo
+        // this claim too and the race would never be reproduced. `retrieved`
+        // fires when the controller resolves the account by NIP, which is before
+        // the savepoint exists. The query builder is used so no model events
+        // recurse. Both fixtures are read before the listener is registered so
+        // their own retrievals do not trigger it.
+        $targetId = (int) $user->getKey();
+        $raced = false;
+
+        User::retrieved(function (User $retrieved) use ($rival, $targetId, &$raced): void {
+            if ($raced || (int) $retrieved->getKey() !== $targetId) {
+                return;
+            }
+
+            $raced = true;
+            DB::table('users')->where('id', $rival->id)->update(['keycloak_id' => self::SUBJECT]);
+        });
+
+        $response = $this->hitCallback();
+
+        $this->assertSame(302, $response->getStatusCode(), 'unique violation harus jadi redirect, bukan 500');
+        $response->assertRedirect(route('login'))->assertSessionHasErrors('keycloak');
+        $this->assertGuest();
+
+        // The subject stayed with whoever won the race; we did not overwrite it.
+        $this->assertSame(self::SUBJECT, $rival->fresh()->keycloak_id);
+        $this->assertNull($user->fresh()->keycloak_id);
+
+        // The actor is null on a refusal — nobody is authenticated yet — so the
+        // account appears as the log's SUBJECT, not as its user_id.
+        $this->assertDatabaseHas('activity_logs', [
+            'user_id' => null,
+            'activity_type' => ActivityType::LOGIN_FAILED,
+            'subject_type' => 'user',
+            'subject_id' => $user->id,
+        ]);
     }
 
     // ------------------------------------------------------ 6. malformed tokens
