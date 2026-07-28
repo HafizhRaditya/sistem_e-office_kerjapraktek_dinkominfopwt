@@ -196,6 +196,35 @@ class EofficeV21Seeder extends Seeder
                     ],
                     'access_nip_nik' => ['3302010000000001', '3302010000000002'],
                 ],
+
+                // Aplikasi peraga SSO (lihat demo-sso/). Berbeda dari entri lain:
+                // ini satu-satunya yang menunjuk ke aplikasi yang benar-benar
+                // berjalan secara lokal, dan menjadi client kedua pada realm
+                // Keycloak yang sama dengan portal. Fungsinya membuktikan klaim
+                // "cukup sekali login" — pengguna yang sudah masuk lewat SSO di
+                // portal tidak dimintai kredensial lagi saat membukanya.
+                //
+                // Sengaja disertakan di seeder supaya bertahan melewati
+                // migrate:fresh --seed dan tersedia bagi siapa pun yang menerima
+                // serah terima ini, bukan hanya di mesin yang sempat membuatnya
+                // manual lewat panel admin. Aplikasinya sendiri hanya jalan bila
+                // `npm start` dijalankan dari demo-sso/; bila tidak, kartunya
+                // tetap tampil dan tautannya sekadar tidak bisa dibuka.
+                [
+                    'opd_code' => 'DINKOMINFO',
+                    'name' => 'Demo SSO',
+                    'slug' => 'demo-sso',
+                    'description' => 'Aplikasi peraga untuk membuktikan SSO Keycloak antar-aplikasi. Berjalan lokal pada port 9000.',
+                    'app_group' => 'tools',
+                    'category_slugs' => ['umum'],
+                    'is_active' => true,
+                    'is_new' => true,
+                    'sort_order' => 6,
+                    'links' => [
+                        ['label' => 'Frontend', 'url' => 'http://127.0.0.1:9000', 'is_active' => true, 'sort_order' => 1],
+                    ],
+                    'access_nip_nik' => ['3302010000000001', '3302010000000002'],
+                ],
             ];
 
             foreach ($applications as $application) {
