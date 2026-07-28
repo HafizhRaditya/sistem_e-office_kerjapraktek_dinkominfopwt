@@ -68,7 +68,7 @@ class EofficeV21Seeder extends Seeder
             $users = [
                 [
                     'opd_code' => 'DINKOMINFO',
-                    'nip_nik' => 'ADMIN001',
+                    'nip_nik' => 'admin',
                     'name' => 'Admin E-Office',
                     'email' => 'admin@banyumaskab.go.id',
                     'role' => 'admin',
@@ -260,7 +260,7 @@ class EofficeV21Seeder extends Seeder
             DB::table('questionnaires')->updateOrInsert(
                 ['title' => 'Survei Kepuasan Portal E-Office'],
                 [
-                    'created_by' => $userId('ADMIN001'),
+                    'created_by' => $userId('admin'),
                     'description' => 'Bantu kami meningkatkan kualitas portal E-Office Kabupaten Banyumas.',
                     'banner_image' => null,
                     'target_url' => 'https://forms.gle/example',
@@ -291,7 +291,7 @@ class EofficeV21Seeder extends Seeder
             DB::table('banners')->updateOrInsert(
                 ['title' => 'Selamat Datang di Portal E-Office'],
                 [
-                    'created_by' => $userId('ADMIN001'),
+                    'created_by' => $userId('admin'),
                     'description' => 'Informasi portal dan layanan digital Kabupaten Banyumas.',
                     'image_path' => null,
                     'target_url' => null,

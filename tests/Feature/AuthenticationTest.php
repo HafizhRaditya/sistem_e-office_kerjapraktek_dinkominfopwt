@@ -34,7 +34,7 @@ class AuthenticationTest extends TestCase
         // The throttle key is (nip_nik + IP) and lives in the cache, not the
         // database, so RefreshDatabase does not reset it. Clear it explicitly so
         // attempt counts never leak between tests.
-        RateLimiter::clear($this->throttleKeyFor('ADMIN001'));
+        RateLimiter::clear($this->throttleKeyFor('admin'));
         RateLimiter::clear($this->throttleKeyFor('3302010000000002'));
         RateLimiter::clear($this->throttleKeyFor('9999999999999999'));
     }

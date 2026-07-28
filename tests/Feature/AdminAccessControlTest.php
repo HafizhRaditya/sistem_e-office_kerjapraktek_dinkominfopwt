@@ -34,7 +34,7 @@ class AdminAccessControlTest extends TestCase
 
     public function test_admin_can_view_the_access_list(): void
     {
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->get('/admin/akses')
             ->assertOk()
             ->assertSee('Manajemen Hak Akses');
@@ -44,7 +44,7 @@ class AdminAccessControlTest extends TestCase
     {
         $siti = $this->user('3302010000000002');
 
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->get(route('admin.akses.edit', $siti))
             ->assertOk()
             ->assertSee($siti->name)
@@ -58,7 +58,7 @@ class AdminAccessControlTest extends TestCase
         $eplanning = Application::where('slug', 'e-planning')->firstOrFail();
         $smartcity = Application::where('slug', 'banyumas-smart-city')->firstOrFail();
 
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->put(route('admin.akses.update', $agus), ['access' => [$simpus->id, $eplanning->id]])
             ->assertRedirect(route('admin.akses.edit', $agus));
 

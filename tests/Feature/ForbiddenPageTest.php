@@ -93,7 +93,7 @@ class ForbiddenPageTest extends TestCase
             ->assertSee('Kembali ke Dashboard');
 
         // Admin (rejected by the availability guard, not the role guard) -> panel.
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->get('/launch/agenda-pimpinan')
             ->assertSee('Kembali ke Panel Admin');
     }
