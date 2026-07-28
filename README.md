@@ -113,6 +113,8 @@ sistem_e-office_kerjapraktek_dinkominfopwt/
 │   ├── kebutuhan/       ← KF_AUTH_RBAC & KF_DASHBOARD_KUISIONER (final)
 │   ├── mockup/          ← mockup_login.html, mockup_dashboard_v2.html
 │   └── testing/         ← tabel skenario blackbox testing (bahan laporan)
+├── demo-sso/            ← ALAT PERAGA SSO (Node.js, port 9000) — bukan bagian
+│                          sistem yang diserahkan; lihat Bagian 11
 └── (proyek Laravel di root: app/ database/ resources/ routes/ ...)
 ```
 
@@ -401,3 +403,110 @@ aplikasi gagal, migration tertinggal adalah tersangka pertama.
 > **Pin ini bersifat SEMENTARA dan dicabut pasca-KP,** saat peningkatan ke Symfony
 > 8 dikerjakan sebagai pekerjaan tersendiri yang direview sadar. Laravel 13 sendiri
 > sudah menerima `^7.4 || ^8.0`, jadi pin ini membekukan waktu, bukan batas teknis.
+
+---
+
+## 11. `demo-sso/` — alat peraga SSO (bukan bagian sistem)
+
+> ### ⚠️ Baca ini lebih dulu
+>
+> `demo-sso/` adalah **alat peraga untuk membuktikan rantai SSO**, bukan bagian
+> dari sistem E-Office yang diserahkan. Ia **tidak dipasang di server produksi**,
+> tidak dipakai pegawai, dan tidak menyimpan data apa pun.
+>
+> Satu-satunya tugasnya: menjadi **client kedua** pada realm Keycloak yang sama
+> dengan portal, sehingga dapat ditunjukkan bahwa pengguna yang sudah masuk lewat
+> SSO di E-Office **tidak dimintai kredensial lagi** saat membuka aplikasi lain.
+> Itu bukti untuk klaim *"cukup sekali login untuk semua aplikasi"* (lingkup
+> Bagian 1 butir 5) — dipakai saat demo, UAT, dan pengambilan screenshot laporan,
+> lalu selesai.
+>
+> Aplikasi ini berdiri sendiri: Node.js + Express, punya `package.json`, `.env`,
+> dan `node_modules` sendiri, terpisah penuh dari Laravel.
+
+### 11.1 Menjalankannya
+
+Perintah dijalankan **dari dalam `demo-sso/`**, bukan dari akar proyek:
+
+```bash
+cd demo-sso
+```
+```bash
+npm install
+```
+```bash
+npm start
+```
+
+Berjalan di **`http://127.0.0.1:9000`** (portal di `:8000`). Untuk sekadar
+memeriksa berkasnya tanpa menjalankan server: `npm run check`.
+
+> **Setup akar proyek TIDAK mencakup aplikasi ini.** Baik `composer run setup`
+> maupun `npm install` di akar hanya memasang dependensi Laravel — `package.json`
+> akar tidak memakai *workspaces* dan tidak mengetahui keberadaan `demo-sso/`.
+> Selama `npm install` di dalam `demo-sso/` belum dijalankan, `npm start` akan
+> gagal karena `node_modules` aplikasi ini belum ada.
+
+> **Jangan menjalankan `npm install` untuk aplikasi ini dari akar proyek.**
+> Berkas `package.json` milik demo pernah tersalin ke akar dan menimpa milik
+> Laravel; `npm install` berikutnya membuang dependensi frontend Laravel
+> (Vite, Tailwind, Alpine) karena membaca `package.json` yang salah. Selalu
+> `cd demo-sso` terlebih dahulu.
+
+### 11.2 Client Keycloak terpisah
+
+Aplikasi ini **tidak boleh memakai client portal** (`eoffice-portal`). Buat
+client **baru** pada realm yang sama, dengan cara yang sama seperti Bagian 10.1:
+
+| Pengaturan | Nilai |
+|---|---|
+| Client ID | `eoffice-sso-demo` |
+| Client authentication | **ON** (confidential) |
+| Authentication flow | **Standard flow** |
+| Valid redirect URIs | `http://127.0.0.1:9000/callback` |
+| Valid post logout redirect URIs | `http://127.0.0.1:9000/logged-out` |
+| Web origins | `http://127.0.0.1:9000` |
+
+Kemudian salin `demo-sso/.env.example` menjadi `demo-sso/.env` dan isi:
+
+| Variabel | Diambil dari |
+|---|---|
+| `OIDC_ISSUER` | Sama dengan issuer portal — `KEYCLOAK_BASE_URL` + `/realms/` + `KEYCLOAK_REALM` |
+| `OIDC_CLIENT_ID` | Client ID yang baru dibuat di atas |
+| `OIDC_CLIENT_SECRET` | Tab **Credentials** pada client tersebut *(rahasia — hanya di `.env`, jangan pernah ditulis di README, `.env.example`, atau commit)* |
+| `OIDC_REDIRECT_URI` | Harus sama persis dengan *Valid redirect URIs* |
+| `SESSION_SECRET` | Bangkitkan sendiri: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+
+`demo-sso/.env` dan `demo-sso/node_modules` sudah ditutup oleh `.gitignore`
+milik folder tersebut, sehingga tidak dapat ikut ter-commit.
+
+### 11.3 ⚠️ Entri seeder "Demo SSO" hanya untuk lokal
+
+Seeder memuat satu aplikasi bernama **Demo SSO** yang tautannya menunjuk ke:
+
+```
+http://127.0.0.1:9000
+```
+
+**Itu alamat lokal — pada server, ia menunjuk ke server itu sendiri, bukan ke
+komputer pengunjung.** Kartu tersebut karenanya tidak akan berfungsi bila ikut
+terpasang di lingkungan produksi.
+
+Dalam praktiknya hal itu **tidak akan terjadi**, karena seeder memang tidak
+dijalankan di produksi:
+
+| Lingkungan | Perintah | Akibatnya |
+|---|---|---|
+| Pengembangan | `php artisan migrate --seed` | Data dummy **termasuk** Demo SSO |
+| **Produksi** | `php artisan migrate --force` (**tanpa `--seed`**) | Hanya struktur tabel; **tanpa** data dummy dan **tanpa** Demo SSO |
+
+Akun admin pertama di produksi dibuat lewat perintah khusus, bukan seeder:
+
+```bash
+php artisan eoffice:create-admin
+```
+
+Jadi basis data produksi tidak pernah memuat pegawai dummy, aplikasi contoh,
+maupun entri Demo SSO. Bila suatu saat aplikasi peraga ini benar-benar perlu
+dipertunjukkan dari server, daftarkan sebagai aplikasi biasa lewat panel admin
+dengan URL yang dapat dijangkau jaringan — bukan `127.0.0.1`.
