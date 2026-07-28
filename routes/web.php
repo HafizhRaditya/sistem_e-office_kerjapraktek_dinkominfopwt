@@ -17,9 +17,26 @@ use App\Http\Controllers\LaunchController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Support\AuthLanding;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect()->route('dashboard'));
+/**
+ * Entry point, routed by role (FR-A01).
+ *
+ * This used to redirect to /dashboard unconditionally, which quietly broke the
+ * role-based landing for admins: a guest opening the site root was sent to
+ * /dashboard, bounced to /login by the auth middleware, and — because that
+ * bounce stores /dashboard as the "intended" URL — landed back on the portal
+ * after signing in, never on the admin panel. The intended URL simply won.
+ *
+ * Sending guests straight to /login removes that phantom intent, so
+ * AuthLanding decides where they land. A guest who genuinely deep-linked to
+ * /dashboard still gets it back, because that bounce sets a real intent.
+ */
+Route::get('/', fn () => Auth::check()
+    ? redirect()->to(AuthLanding::homeFor(Auth::user()))
+    : redirect()->route('login'));
 
 // Auth (basic — full auth module lands later). showLogin() redirects logged-in users.
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
