@@ -208,10 +208,17 @@ class KeycloakSsoLoginTest extends TestCase
      * Keycloak stores usernames lowercased. An account registered there as
      * "ADMIN001" is handed back as "admin001", which used to miss a `nip_nik`
      * held in upper case and got the user rejected as unregistered.
+     *
+     * The upper-case NIP is set here rather than taken from the seeder: the
+     * seeded admin is lower case ("admin"), which would make this test pass
+     * without exercising the case folding at all.
      */
     public function test_lowercase_keycloak_username_matches_uppercase_nip(): void
     {
-        $admin = User::where('nip_nik', 'ADMIN001')->firstOrFail();
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $admin->nip_nik = 'ADMIN001';
+        $admin->save();
+
         $this->assertNull($admin->keycloak_id);
 
         $this->fakeKeycloak($this->signIdToken([

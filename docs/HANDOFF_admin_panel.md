@@ -163,9 +163,9 @@ php artisan test
 
 | NIP/NIK | Nama | Peran | Mendarat di |
 |---|---|---|---|
-| `ADMIN001` | Admin E-Office | admin | `/admin/akses` |
+| `admin` | Admin E-Office | admin | `/admin/akses` |
 | `3302010000000001` | Budi Santoso (SETDA) | pegawai | `/dashboard` |
 | `3302010000000002` | Siti Rahayu (DINKOMINFO) | pegawai | `/dashboard` |
 | `3302010000000003` | Agus Prasetyo (DINKES) | pegawai | `/dashboard` |
 
-**Uji asap cepat:** login `ADMIN001` → harus mendarat di `/admin/akses`; ketik di kotak cari → tabel menyaring tanpa Enter. Login pegawai → `/dashboard`; buka `/admin` → **403**; buka `/launch/simpus` (tanpa hak) → **403**.
+**Uji asap cepat:** login `admin` → harus mendarat di `/admin/akses`; ketik di kotak cari → tabel menyaring tanpa Enter. Login pegawai → `/dashboard`; buka `/admin` → **403**; buka `/launch/simpus` (tanpa hak) → **403**.

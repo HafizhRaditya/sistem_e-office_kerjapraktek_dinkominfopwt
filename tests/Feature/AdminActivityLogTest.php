@@ -13,7 +13,7 @@ class AdminActivityLogTest extends TestCase
 {
     private function admin(): User
     {
-        return User::where('nip_nik', 'ADMIN001')->firstOrFail();
+        return User::where('nip_nik', 'admin')->firstOrFail();
     }
 
     private function pegawai(): User

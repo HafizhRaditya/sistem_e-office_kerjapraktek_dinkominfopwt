@@ -44,7 +44,7 @@ class RbacCrossRoleTest extends TestCase
             'challenges.cloudflare.com/*' => Http::response(['success' => true], 200),
         ]);
 
-        $this->admin = User::where('nip_nik', 'ADMIN001')->firstOrFail();
+        $this->admin = User::where('nip_nik', 'admin')->firstOrFail();
 
         $this->smartCity = Application::where('slug', 'banyumas-smart-city')->firstOrFail();
         $this->dataHub = Application::where('slug', 'data-hub-banyumas')->firstOrFail();
