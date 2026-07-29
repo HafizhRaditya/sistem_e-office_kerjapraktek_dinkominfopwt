@@ -46,7 +46,7 @@ class LaunchGuardTest extends TestCase
 
     public function test_admin_does_not_bypass_inactive_application(): void
     {
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->get('/launch/agenda-pimpinan')
             ->assertStatus(403)
             ->assertSee('Aplikasi ini sedang tidak aktif.');

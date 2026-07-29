@@ -14,16 +14,16 @@
 | Stack | Laravel 13.19 · PHP 8.4.12 · PostgreSQL 18.4 |
 | Basis data uji | `sistem_eoffice_test` (terpisah dari `sistem_eoffice` pengembangan) |
 | Perintah | `php artisan test` |
-| Hasil suite | **178 test lolos, 0 gagal, 929 assertion** |
+| Hasil suite | **187 test lolos, 0 gagal, 975 assertion** |
 
-> Riwayat: 116 test (22 Juli, sebelum modul SSO) → 155 (tombol SSO) → **178**
-> setelah alur SSO Keycloak diuji penuh.
+> Riwayat: 116 test (22 Juli, sebelum modul SSO) → 155 (tombol SSO) → 178
+> (alur SSO penuh) → **187** setelah pendaratan berbasis peran dikunci test.
 
 Akun uji dari seeder (`EofficeV21Seeder`), seluruh sandi `password`:
 
 | NIP/NIK | Nama | Peran | OPD |
 |---|---|---|---|
-| `ADMIN001` | Admin E-Office | admin | DINKOMINFO |
+| `admin` | Admin E-Office | admin | DINKOMINFO |
 | `3302010000000001` | Budi Santoso | pegawai | SETDA |
 | `3302010000000002` | Siti Rahayu | pegawai | DINKOMINFO |
 | `3302010000000003` | Agus Prasetyo | pegawai | DINKES |
@@ -49,13 +49,13 @@ diisi berdasarkan keluaran `php artisan test` yang nyata, bukan pengamatan manua
 
 ---
 
-## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-16)
+## 2. Tabel Pengujian AUTENTIKASI (AUT-01 – AUT-18)
 
 Seluruh baris pada tabel ini **terverifikasi otomatis**.
 
 | No | Skenario | Langkah Uji | Hasil Diharapkan | Hasil Aktual | Status |
 |---|---|---|---|---|---|
-| **AUT-01** | Login admin dengan kredensial benar | Buka `/login` → isi `ADMIN001` / `password` → klik **Masuk** | Sesi dibuat, `last_login_at` diperbarui, dicatat `login_success`, diarahkan ke `/admin/akses` | Sesuai — pengalihan ke `/admin/akses`, autentikasi terverifikasi | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
+| **AUT-01** | Login admin dengan kredensial benar | Buka `/login` → isi `admin` / `password` → klik **Masuk** | Sesi dibuat, `last_login_at` diperbarui, dicatat `login_success`, diarahkan ke `/admin/akses` | Sesuai — pengalihan ke `/admin/akses`, autentikasi terverifikasi | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
 | **AUT-02** | Login pegawai dengan kredensial benar | Buka `/login` → isi `3302010000000002` / `password` → klik **Masuk** | Sesi dibuat, diarahkan ke `/dashboard` (bukan panel admin) | Sesuai — pengalihan ke `/dashboard` | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
 | **AUT-03** | Login dengan kata sandi salah | Isi `3302010000000002` / `sandi-yang-salah` → **Masuk** | Ditolak, pesan **"NIP/NIK atau kata sandi salah."**, dicatat `login_failed` beratribut pengguna tersebut, sesi tidak dibuat | Sesuai — pesan cocok persis, tetap tamu, jumlah `login_failed` bertambah 1 dengan `user_id` terisi | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
 | **AUT-04** | Login dengan NIP/NIK tidak terdaftar | Isi `9999999999999999` / `password` → **Masuk** | Ditolak dengan pesan **sama persis** seperti AUT-03 (tidak membocorkan apakah NIP terdaftar); dicatat `login_failed` dengan `user_id` kosong | Sesuai — pesan identik dengan AUT-03, baris log tercatat dengan `user_id = null` | ✅ Lolos (otomatis)<br>`AuthenticationTest` |
@@ -73,6 +73,8 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
 | **AUT-14** | Pegawai dapat masuk memakai sandi hasil reset admin | Lanjutan AUT-13: keluar dari sesi admin → buka `/login` → masuk sebagai pegawai itu dengan sandi baru | Login berhasil, diarahkan ke `/dashboard` | Sesuai — diuji ujung-ke-ujung lewat form `/login` sungguhan, bukan sekadar pemeriksaan hash | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
 | **AUT-15** | Admin ditolak mereset kata sandi akunnya sendiri | Panel Admin → **Kelola** pada akun sendiri → kirim `PUT` ke `/admin/pengguna/{id}/reset-sandi` | Ditolak: "Anda tidak dapat mereset kata sandi akun sendiri di sini. Gunakan menu Ubah Sandi, yang meminta kata sandi lama." Hash sandi admin tidak berubah | Sesuai — hash sebelum dan sesudah identik | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
 | **AUT-16** | Formulir reset disembunyikan pada akun sendiri | Buka halaman Ubah Pengguna untuk akun sendiri, lalu untuk akun pegawai lain | Akun sendiri: formulir tidak ditampilkan, diganti tautan ke **Ubah Sandi**. Akun lain: formulir tampil normal | Sesuai — kolom sandi absen pada halaman akun sendiri, hadir pada akun lain | ✅ Lolos (otomatis)<br>`AdminUserManagementTest` |
+| **AUT-17** | Pendaratan berbasis peran dari akar situs | Buka `http://127.0.0.1:8000/` sebagai tamu → login `admin` / `password` | Akar mengarahkan tamu ke `/login` (bukan `/dashboard`), lalu admin mendarat di `/admin/akses`. Pegawai pada alur yang sama mendarat di `/dashboard` | Sesuai — akar mengarah ke `/login`; admin ke `/admin/akses`, pegawai ke `/dashboard` | ✅ Lolos (otomatis)<br>`LoginRedirectTest`, `ExampleTest` |
+| **AUT-18** | Tautan dalam tetap dihormati | Sebagai tamu buka `/dashboard` langsung → dialihkan ke `/login` → login sebagai **admin** | Setelah login kembali ke `/dashboard`, bukan ke panel admin — tujuan yang benar-benar diminta tidak boleh ditimpa aturan peran | Sesuai — admin mendarat di `/dashboard` | ✅ Lolos (otomatis)<br>`LoginRedirectTest` |
 
 ---
 
@@ -82,7 +84,7 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
 
 | No | Skenario | Langkah Uji | Hasil Diharapkan | Hasil Aktual | Status |
 |---|---|---|---|---|---|
-| **RBAC-01** | Admin dapat membuka seluruh halaman panel | Login `ADMIN001`, buka 12 halaman `/admin/*` (Beranda, Hak Akses, Atur Akses, Aplikasi, Tambah/Ubah Aplikasi, Tambah/Ubah Tautan, Pengguna, Tambah/Ubah Pengguna, Log Aktivitas) | Seluruh halaman terbuka (200); Beranda mengalihkan (302) | Sesuai — 12/12 terbuka, nol penolakan | ✅ Lolos<br>`RbacCrossRoleTest` |
+| **RBAC-01** | Admin dapat membuka seluruh halaman panel | Login `admin`, buka 12 halaman `/admin/*` (Beranda, Hak Akses, Atur Akses, Aplikasi, Tambah/Ubah Aplikasi, Tambah/Ubah Tautan, Pengguna, Tambah/Ubah Pengguna, Log Aktivitas) | Seluruh halaman terbuka (200); Beranda mengalihkan (302) | Sesuai — 12/12 terbuka, nol penolakan | ✅ Lolos<br>`RbacCrossRoleTest` |
 | **RBAC-02** | Pegawai ditolak dari seluruh panel admin | Login pegawai OPD A **dan** OPD B, buka 12 halaman `/admin/*` yang sama | **403** pada semua halaman, bukan pengalihan | Sesuai — 24/24 percobaan ditolak 403 | ✅ Lolos<br>`RbacCrossRoleTest` |
 | **RBAC-03** | Tamu diarahkan ke login, bukan 403 | Tanpa sesi, buka `/admin/akses` | Dialihkan ke `/login` | Sesuai | ✅ Lolos<br>`AdminAccessControlTest` |
 | **RBAC-04** | Pegawai meluncurkan aplikasi yang menjadi haknya | Pegawai SETDA (hak: Smart City, Data Hub) buka `/launch/banyumas-smart-city` | 302 keluar ke URL aplikasi, 1 kunjungan tercatat | Sesuai | ✅ Lolos<br>`RbacCrossRoleTest`, `LaunchGuardTest` |
@@ -94,7 +96,7 @@ Seluruh baris pada tabel ini **terverifikasi otomatis**.
 | **RBAC-10** | Perubahan hak berlaku dalam satu sesi berjalan | Pegawai login lewat form `/login` sungguhan → coba aplikasi (403) → hak ditambahkan di tengah sesi → coba lagi (302) → hak dicabut → coba lagi (403) | Ketiga hasil berubah tanpa login ulang; sesi tidak pernah diperbarui | Sesuai — status autentikasi diperiksa di tiap langkah, sesi tetap sama | ✅ Lolos<br>`RbacCrossRoleTest` |
 | **RBAC-11** | Admin menembus **izin** (tanpa baris hak akses) | Pastikan admin tidak memiliki baris `application_access`, lalu buka `/launch/banyumas-smart-city` | 302 keluar + tepat 1 kunjungan tercatat | Sesuai — admin terverifikasi 0 baris hak akses | ✅ Lolos<br>`RbacCrossRoleTest` |
 | **RBAC-12** | Aplikasi nonaktif ditolak meski pegawai punya hak | Pegawai dengan hak atas `agenda-pimpinan` (`is_active=false`) membukanya | 403 + "Aplikasi ini sedang tidak aktif."; **tanpa** catatan kunjungan | Sesuai — jumlah kunjungan tidak bertambah | ✅ Lolos<br>`LaunchGuardTest` |
-| **RBAC-13** | Admin **tidak** menembus aplikasi/tautan nonaktif | `ADMIN001` buka `/launch/agenda-pimpinan`, lalu tautan "Backend V2" (`is_active=false`) pada Data Hub | Keduanya 403; tanpa catatan kunjungan. `is_active` = *ketersediaan*, bukan *izin* | Sesuai | ✅ Lolos<br>`LaunchGuardTest`, `RbacCrossRoleTest` |
+| **RBAC-13** | Admin **tidak** menembus aplikasi/tautan nonaktif | `admin` buka `/launch/agenda-pimpinan`, lalu tautan "Backend V2" (`is_active=false`) pada Data Hub | Keduanya 403; tanpa catatan kunjungan. `is_active` = *ketersediaan*, bukan *izin* | Sesuai | ✅ Lolos<br>`LaunchGuardTest`, `RbacCrossRoleTest` |
 | **RBAC-14** | Tautan nonaktif ditolak untuk pegawai | Pegawai membuka tautan "Backend V2" Data Hub (`is_active=false`) | 403 + "Tautan aplikasi ini sedang tidak aktif."; tanpa catatan kunjungan | Sesuai | ✅ Lolos<br>`LaunchGuardTest` |
 
 ---

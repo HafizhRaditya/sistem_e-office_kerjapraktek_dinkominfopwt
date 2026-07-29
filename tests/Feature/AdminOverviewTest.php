@@ -24,7 +24,7 @@ class AdminOverviewTest extends TestCase
 
     public function test_admin_can_open_the_overview(): void
     {
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))
             ->assertOk()
             ->assertSee('Ringkasan')
@@ -52,7 +52,7 @@ class AdminOverviewTest extends TestCase
         $inactiveApps = Application::where('is_active', false)->count();
         $expectedGrants = ApplicationAccess::count();
 
-        $html = $this->actingAs($this->user('ADMIN001'))
+        $html = $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))
             ->assertOk()
             ->getContent();
@@ -71,12 +71,12 @@ class AdminOverviewTest extends TestCase
     {
         $siti = $this->user('3302010000000002');
 
-        $before = $this->actingAs($this->user('ADMIN001'))
+        $before = $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))->getContent();
 
         $siti->update(['is_active' => false]);
 
-        $after = $this->actingAs($this->user('ADMIN001'))
+        $after = $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))->getContent();
 
         $this->assertNotSame($before, $after, 'angka ringkasan harus dihitung dari DB, bukan statis');
@@ -90,7 +90,7 @@ class AdminOverviewTest extends TestCase
      */
     public function test_it_does_not_report_questionnaire_or_banner_statistics(): void
     {
-        $html = $this->actingAs($this->user('ADMIN001'))
+        $html = $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))
             ->assertOk()
             ->getContent();
@@ -103,7 +103,7 @@ class AdminOverviewTest extends TestCase
 
     public function test_the_sidebar_points_at_the_overview_not_the_portal_dashboard(): void
     {
-        $html = $this->actingAs($this->user('ADMIN001'))
+        $html = $this->actingAs($this->user('admin'))
             ->get(route('admin.ringkasan'))
             ->assertOk()
             ->getContent();

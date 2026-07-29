@@ -202,6 +202,105 @@ class KeycloakSsoLoginTest extends TestCase
         $this->assertSame('keycloak_id', $log->properties['matched_by'] ?? null);
     }
 
+    // ------------------------------ 2b. username case must not block the match
+
+    /**
+     * Keycloak stores usernames lowercased. An account registered there as
+     * "ADMIN001" is handed back as "admin001", which used to miss a `nip_nik`
+     * held in upper case and got the user rejected as unregistered.
+     *
+     * The upper-case NIP is set here rather than taken from the seeder: the
+     * seeded admin is lower case ("admin"), which would make this test pass
+     * without exercising the case folding at all.
+     */
+    public function test_lowercase_keycloak_username_matches_uppercase_nip(): void
+    {
+        $admin = User::where('role', 'admin')->firstOrFail();
+        $admin->nip_nik = 'ADMIN001';
+        $admin->save();
+
+        $this->assertNull($admin->keycloak_id);
+
+        $this->fakeKeycloak($this->signIdToken([
+            'preferred_username' => 'admin001',   // as Keycloak stores it
+            'sub' => 'kc-subject-admin',
+        ]));
+
+        // Admins land in the admin panel, not the dashboard.
+        $this->hitCallback()->assertRedirect(route('admin.akses.index'));
+
+        $this->assertAuthenticatedAs($admin->fresh());
+        $this->assertSame('kc-subject-admin', $admin->fresh()->keycloak_id);
+    }
+
+    /** The reverse direction must work too — the comparison is symmetric. */
+    public function test_uppercase_keycloak_username_matches_lowercase_nip(): void
+    {
+        $user = $this->pegawai();
+        $user->nip_nik = 'nik-huruf-kecil';
+        $user->save();
+
+        $this->fakeKeycloak($this->signIdToken(['preferred_username' => 'NIK-HURUF-KECIL']));
+
+        $this->hitCallback()->assertRedirect(route('dashboard'));
+
+        $this->assertAuthenticatedAs($user->fresh());
+        $this->assertSame(self::SUBJECT, $user->fresh()->keycloak_id);
+    }
+
+    /**
+     * UNIQUE(nip_nik) is case-sensitive, so two accounts may differ only in
+     * case. Matching case-insensitively then finds both, and choosing one
+     * would sign somebody into a colleague's account — it must refuse.
+     */
+    public function test_ambiguous_case_insensitive_match_is_refused(): void
+    {
+        $first = User::where('nip_nik', '3302010000000002')->firstOrFail();
+        $first->nip_nik = 'KEMBAR01';
+        $first->save();
+
+        $second = User::where('nip_nik', '3302010000000003')->firstOrFail();
+        $second->nip_nik = 'kembar01';
+        $second->save();
+
+        $this->fakeKeycloak($this->signIdToken(['preferred_username' => 'Kembar01']));
+
+        $this->hitCallback()
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors('keycloak');
+
+        $this->assertGuest();
+        $this->assertNull($first->fresh()->keycloak_id, 'tidak boleh menautkan salah satu secara sembarangan');
+        $this->assertNull($second->fresh()->keycloak_id);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'activity_type' => ActivityType::LOGIN_FAILED,
+            'subject_label' => 'Kembar01',
+        ]);
+    }
+
+    /** Case-insensitivity applies to the NIP fallback only, never to `sub`. */
+    public function test_subject_matching_stays_case_sensitive(): void
+    {
+        $user = $this->pegawai();
+        $user->keycloak_id = 'KC-SUBJECT-HURUF-BESAR';
+        $user->save();
+
+        // Same subject in a different case, and a username nobody owns: the
+        // subject must NOT match, so this falls through to a plain rejection.
+        $this->fakeKeycloak($this->signIdToken([
+            'sub' => 'kc-subject-huruf-besar',
+            'preferred_username' => 'tidak-ada-pemiliknya',
+        ]));
+
+        $this->hitCallback()
+            ->assertRedirect(route('login'))
+            ->assertSessionHasErrors('keycloak');
+
+        $this->assertGuest();
+        $this->assertSame('KC-SUBJECT-HURUF-BESAR', $user->fresh()->keycloak_id);
+    }
+
     // ------------------------------------- 3. unknown identity is not created
 
     public function test_unknown_preferred_username_is_rejected_and_creates_no_user(): void

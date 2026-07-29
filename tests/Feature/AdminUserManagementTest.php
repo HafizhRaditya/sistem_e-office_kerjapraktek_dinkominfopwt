@@ -27,7 +27,7 @@ class AdminUserManagementTest extends TestCase
 
     private function admin(): User
     {
-        return User::where('nip_nik', 'ADMIN001')->firstOrFail();
+        return User::where('nip_nik', 'admin')->firstOrFail();
     }
 
     private function pegawai(): User
@@ -79,7 +79,7 @@ class AdminUserManagementTest extends TestCase
     public function test_duplicate_nip_nik_is_rejected(): void
     {
         $this->actingAs($this->admin())
-            ->post(route('admin.users.store'), $this->payload(['nip_nik' => 'ADMIN001']))
+            ->post(route('admin.users.store'), $this->payload(['nip_nik' => 'admin']))
             ->assertSessionHasErrors('nip_nik');
     }
 

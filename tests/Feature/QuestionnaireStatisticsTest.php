@@ -18,7 +18,7 @@ class QuestionnaireStatisticsTest extends TestCase
         $this->withoutVite();
 
         $questionnaire = Questionnaire::where('title', 'Survei Kepuasan Portal E-Office')->firstOrFail();
-        $response = $this->actingAs($this->user('ADMIN001'))
+        $response = $this->actingAs($this->user('admin'))
             ->get(route('admin.questionnaires.statistics', ['questionnaire' => $questionnaire->id]));
 
         $response->assertOk()->assertSee('Statistik Kuisioner');
@@ -47,7 +47,7 @@ class QuestionnaireStatisticsTest extends TestCase
     {
         $this->withoutVite();
 
-        $response = $this->actingAs($this->user('ADMIN001'))
+        $response = $this->actingAs($this->user('admin'))
             ->get(route('admin.questionnaires.statistics', ['status' => 'responded']));
 
         $employees = collect($response->viewData('employees')->items());

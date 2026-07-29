@@ -86,7 +86,7 @@ class CreateAdminCommandTest extends TestCase
         $before = User::count();
 
         $this->artisan('eoffice:create-admin', [
-            '--nip' => 'ADMIN001',   // already seeded
+            '--nip' => 'admin',   // already seeded
             '--name' => 'Uji Duplikat',
             '--opd' => $this->opdCode(),
             '--email' => '',

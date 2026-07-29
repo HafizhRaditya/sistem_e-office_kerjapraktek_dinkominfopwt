@@ -26,7 +26,7 @@ class QuestionnaireTest extends TestCase
         $this->assertTrue($pegawaiSlides->contains(fn (array $slide): bool => $slide['type'] === 'banner'));
         $this->assertTrue($pegawaiSlides->contains(fn (array $slide): bool => $slide['type'] === 'questionnaire'));
 
-        $adminResponse = $this->actingAs($this->user('ADMIN001'))->get(route('dashboard'));
+        $adminResponse = $this->actingAs($this->user('admin'))->get(route('dashboard'));
         $this->assertCount(0, $adminResponse->viewData('popupSlides'));
 
         $siti = $this->user('3302010000000002');
@@ -66,13 +66,13 @@ class QuestionnaireTest extends TestCase
     {
         $questionnaire = Questionnaire::where('title', 'Survei Kepuasan Portal E-Office')->firstOrFail();
 
-        $this->actingAs($this->user('ADMIN001'))
+        $this->actingAs($this->user('admin'))
             ->post(route('questionnaire.click', $questionnaire))
             ->assertForbidden();
 
         $this->assertDatabaseMissing('questionnaire_responses', [
             'questionnaire_id' => $questionnaire->id,
-            'user_id' => $this->user('ADMIN001')->id,
+            'user_id' => $this->user('admin')->id,
         ]);
     }
 }

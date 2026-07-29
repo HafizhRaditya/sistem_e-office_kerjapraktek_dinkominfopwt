@@ -111,7 +111,35 @@ class KeycloakController extends Controller
         $matchedBy = 'keycloak_id';
 
         if (! $user) {
-            $user = User::where('nip_nik', $username)->first();
+            // Keycloak lowercases usernames on storage, so an account created
+            // there as "ADMIN001" arrives here as "admin001" and would never
+            // match a `nip_nik` stored in upper case. Compare case-insensitively.
+            //
+            // lower() on both sides rather than ILIKE: `preferred_username` is
+            // attacker-influenced input, and ILIKE would treat any `%` or `_`
+            // inside it as wildcards — turning an exact lookup into a pattern
+            // match. The binding stays parameterised either way.
+            $candidates = User::whereRaw('lower(nip_nik) = lower(?)', [$username])->get();
+
+            // UNIQUE(nip_nik) is case-sensitive, so "ADMIN001" and "admin001"
+            // can legally coexist as two different accounts. Case-insensitive
+            // matching would then find both, and picking one arbitrarily could
+            // sign somebody into a colleague's account. Refuse instead.
+            if ($candidates->count() > 1) {
+                $this->activityLogger->record(
+                    $request,
+                    ActivityType::LOGIN_FAILED,
+                    "Login SSO ditolak: {$username} cocok dengan lebih dari satu akun (perbedaan huruf besar-kecil).",
+                    subjectType: 'login_identity',
+                    subjectLabel: $username,
+                );
+
+                return redirect()->route('login')->withErrors([
+                    'keycloak' => 'Identitas Keycloak ini cocok dengan lebih dari satu akun E-Office. Hubungi admin OPD.',
+                ]);
+            }
+
+            $user = $candidates->first();
             $matchedBy = 'preferred_username';
         }
 
