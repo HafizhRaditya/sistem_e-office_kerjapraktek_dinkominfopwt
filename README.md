@@ -145,17 +145,19 @@ controller, migration, test), bukan dari rencana:
 | 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
 | 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | ✅ selesai |
 | 2 — Fitur inti | 20–24 Jul | Panel admin lengkap (akses, aplikasi, tautan, pengguna, OPD, ringkasan) + kuisioner & statistik | ✅ selesai |
-| 3 — Integrasi & UAT | 27–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
+| 3 — Integrasi & UAT | 27–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), aplikasi peraga SSO, kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
 | 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ belum |
 
 **Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis
-sudah rampung — manajemen kategori, SSO Keycloak, kesiapan deployment, serta
-**178 test lolos (929 assertion)** — tetapi **deployment nyata dan UAT bersama
-pembimbing lapangan belum dilakukan**.
+sudah rampung — manajemen kategori, SSO Keycloak, aplikasi peraga `demo-sso/`,
+kesiapan deployment, serta **187 test lolos (975 assertion)** — tetapi **deployment
+nyata dan UAT bersama pembimbing lapangan belum dilakukan**. Deployment akan
+ditempuh lewat **Docker**.
 
-Sisa pekerjaan sampai akhir KP (pemilik lengkap ada di ROADMAP.md): deployment ·
-UAT · tabel blackbox modul dashboard & kuisioner (MAU) · uji tampilan responsif
-(MAU) · aplikasi peraga SSO · laporan masing-masing · serah terima.
+Sisa pekerjaan sampai akhir KP (daftar lengkap beserta pemiliknya ada di
+**ROADMAP.md**, dipisah antara yang *menghalangi serah terima* dan yang *baik untuk
+ada*): deployment Docker · bagian Deployment pada README · UAT · tabel blackbox
+modul dashboard & kuisioner (MAU) · laporan masing-masing · serah terima.
 
 > **Kegiatan di luar repo** — demo internal, presentasi, UAT, uji manual, dan status
 > penulisan laporan — ditandai 🔍 di ROADMAP dan sengaja **tidak** diberi status

@@ -97,15 +97,26 @@
 > | ✅ **Manajemen kategori** (PR #17) — kategori menjadi entitas tersendiri, relasi banyak-ke-banyak dengan aplikasi, dapat diaktifkan/dinonaktifkan. Kategori nonaktif menghilangkan filternya dari dashboard tanpa menyembunyikan aplikasinya | **MAU** | `Admin/CategoryController.php` · `Models/Category.php` · migration `..._000013_create_categories_and_application_category_tables` · `AdminCategoryCrudTest` |
 > | ✅ **SSO Keycloak** (PR #18) — portal menjadi OIDC client dengan discovery otomatis dan verifikasi tanda tangan ID token terhadap JWKS. Jalur **kedua** di samping login NIP/NIK; login lama tidak berubah | **HNR** | `KeycloakController.php` · `Services/KeycloakOidcService.php` · migration `..._000014_add_keycloak_id_to_users_table` · `KeycloakSsoLoginTest` (23) · `KeycloakLoginButtonTest` (5) |
 > | ✅ **Kesiapan deployment** — perintah pembuat admin pertama, Turnstile fail-closed di produksi, konfigurasi sesi produksi & reverse proxy | **HNR** | `Console/Commands/CreateAdminUser.php` · `CreateAdminCommandTest` · `TurnstileFailClosedTest` · `trustProxies` di `bootstrap/app.php` · `SESSION_SECURE_COOKIE`/`SESSION_ENCRYPT`/`TRUSTED_PROXIES` di `.env.example` |
-> | ✅ Blackbox testing modul **auth, RBAC, dan SSO** (55 skenario) | **HNR** | `docs/testing/blackbox-testing.md` |
+> | ✅ Blackbox testing modul **auth, RBAC, dan SSO** (57 skenario) | **HNR** | `docs/testing/blackbox-testing.md` |
+> | ✅ **Aplikasi peraga SSO** (PR #20–22) — client kedua pada realm yang sama, membuktikan "cukup sekali login" secara nyata | **MAU** (aplikasi) / **HNR** (penempatan & dokumentasi) | `demo-sso/` · entri seeder `Demo SSO` · README §11 |
 > | ⏳ Blackbox testing modul **dashboard & kuisioner** | **MAU** | Belum ada tabelnya di `docs/testing/blackbox-testing.md` |
-> | ⏳ **Aplikasi peraga SSO** (client kedua pada realm yang sama) | Bersama | Disebut pada lingkup README §1 butir 5; belum ada kodenya di repo |
+>
+> **Perbaikan menyusul setelah pengujian nyata bersama Keycloak instansi:**
+>
+> | Perbaikan | Pemilik | Bukti di repo |
+> |---|---|---|
+> | ✅ Pencocokan `preferred_username` → `nip_nik` **tanpa peka huruf besar-kecil** (PR #19). Keycloak menyimpan username dalam huruf kecil, sehingga akun ber-NIP huruf besar selalu ditolak | **HNR** | `KeycloakController.php` (`lower(nip_nik) = lower(?)`) · 4 test pada `KeycloakSsoLoginTest` |
+> | ✅ **Pendaratan berbasis peran dari akar situs** (PR #20/21). Akar selalu mengarah ke `/dashboard` sehingga mencatat tujuan semu; admin mendarat di portal, bukan panel | **HNR** | `routes/web.php` · 5 test pada `LoginRedirectTest` · skenario AUT-17/18 |
+> | ✅ Akun admin diselaraskan ke `nip_nik` **`admin`** agar cocok dengan username Keycloak instansi (PR #20/21) | **HNR** | `EofficeV21Seeder.php` · 35 rujukan pada 19 berkas test |
+> | ✅ `APP_TIMEZONE` didokumentasikan di `.env.example`. Tanpa itu Laravel jatuh ke UTC dan seluruh stempel waktu meleset 7 jam **tanpa satu pun pesan error** | **HNR** | `.env.example` |
+> | 🔄 **Single Logout (SLO) back-channel** — permintaan pembimbing lapangan. Analisis selesai; menunggu verifikasi klaim `sid` lewat satu kali login nyata | **HNR** | belum ada kode; rencana pada `feat/keycloak-backchannel-logout` |
 
 **Deliverable Fase 3:** sistem ter-deploy, lolos UAT, dokumentasi teknis lengkap.
 
 **Status Fase 3: 🔄 berjalan.** Pekerjaan fitur dan pengujian otomatis sudah selesai
-(178 test lolos, 929 assertion), tetapi **deployment nyata dan UAT belum dilakukan**,
-sehingga fase ini belum dapat dinyatakan selesai.
+(**187 test lolos, 975 assertion**), tetapi **deployment nyata dan UAT belum dilakukan**,
+sehingga fase ini belum dapat dinyatakan selesai. Deployment akan ditempuh lewat
+**Docker** (lihat Sisa Pekerjaan butir 1).
 
 ---
 
@@ -133,7 +144,7 @@ ada di repo**, bukan dari rencana. Kegiatan yang tidak meninggalkan jejak di rep
 | **0 — Analisis & desain** | ✅ Selesai | `ERD/ERD_v2.1_final.png`, `ERD/ERD_v2.md`, `ERD/schema.sql`, `ERD/KF_AUTH_RBAC.md`, `ERD/KF_DASHBOARD_KUISIONER.md`, `Mockup/mockup_dashboard_v2.html`, `readme/inventaris_*.md` |
 | **1 — Fondasi** | ✅ Selesai | Login `nip_nik`, sesi, ubah sandi, rate limiting, Turnstile aktif, dashboard grid dari DB, penghitung kunjungan — seluruhnya tertutup test |
 | **2 — Fitur inti** | ✅ Selesai | Panel admin (akses, aplikasi, tautan, pengguna, OPD, kategori, banner, kuisioner, log, ringkasan), RBAC 403, activity log, statistik partisipasi |
-| **3 — Integrasi & UAT** | 🔄 **Berjalan** | Fitur & pengujian otomatis selesai (kategori, SSO Keycloak, kesiapan deployment, 178 test). **Deployment nyata dan UAT belum dilakukan** |
+| **3 — Integrasi & UAT** | 🔄 **Berjalan** | Fitur & pengujian otomatis selesai (kategori, SSO Keycloak, aplikasi peraga, kesiapan deployment, **187 test**). **Deployment nyata dan UAT belum dilakukan** |
 | **4 — Laporan & penutupan** | ⏳ Belum | Tidak ada artefak laporan di repo |
 
 **Ditandai 🔍 — tidak terlihat dari kode, status sebenarnya hanya diketahui HNR/MAU:**
@@ -145,17 +156,26 @@ UAT bersama pembimbing (Fase 3) · pengambilan screenshot untuk lampiran.
 
 ## Sisa Pekerjaan sampai Akhir KP
 
+**Menghalangi serah terima** — tanpa ini sistem tidak dapat dinyatakan selesai:
+
 | # | Pekerjaan | Pemilik | Catatan |
 |---|---|---|---|
-| 1 | **Deployment ke server Dinkominfo / hosting demo** | Bersama | Kesiapan teknis sudah ada (perintah admin pertama, Turnstile fail-closed, `SESSION_SECURE_COOKIE`, `TrustProxies`); yang belum adalah deployment nyatanya |
-| 2 | **UAT bersama pembimbing lapangan** | Bersama | Prasyarat penetapan "sistem selesai" |
-| 3 | **Tabel blackbox modul dashboard & kuisioner** | **MAU** | `docs/testing/blackbox-testing.md` baru memuat AUT (16), RBAC (14), dan SSO (18+5) — seluruhnya modul HNR |
-| 4 | **Uji tampilan responsif (desktop & mobile)** | **MAU** | 🔍 Tidak terlihat dari kode |
-| 5 | **Aplikasi peraga SSO** — client kedua pada realm yang sama | Bersama | Diperlukan untuk membuktikan klaim "sekali login" secara nyata; belum ada kodenya |
-| 6 | **Laporan Bab 1–5 masing-masing** + abstrak & lampiran | Masing-masing | 🔍 |
-| 7 | **Screenshot seluruh halaman** untuk lampiran laporan | Masing-masing | 🔍 |
-| 8 | **Serah terima sistem & dokumentasi** ke Dinkominfo | Bersama | Hari terakhir KP |
-| 9 | **Cabut pin sementara `symfony/*` `7.4.*`** dari `composer.json` | **HNR** | Pasca-KP, saat peningkatan ke Symfony 8 dikerjakan sebagai pekerjaan tersendiri; alasannya terdokumentasi di README §10.6 |
+| 1 | **Deployment lewat Docker** | Bersama | Diputuskan memakai Docker agar lingkungan produksi dapat direproduksi dan tidak bergantung pada pemasangan manual PHP/PostgreSQL di server. Kesiapan aplikasinya sudah ada — `eoffice:create-admin`, Turnstile fail-closed, `SESSION_SECURE_COOKIE`, `TrustProxies`; yang belum adalah berkas Docker dan deployment nyatanya |
+| 2 | **Bagian Deployment pada README** | **HNR** | Prosedur produksi (`migrate --force` **tanpa** `--seed` + `eoffice:create-admin`) saat ini hanya tertulis di §11.3, terkubur di bagian aplikasi peraga. Risiko terbesar: seeder membuat akun admin bersandi `password`; bila `--seed` terlanjur dijalankan di produksi, server langsung memiliki administrator bersandi yang tertulis di repo publik |
+| 3 | **UAT bersama pembimbing lapangan** | Bersama | Prasyarat penetapan "sistem selesai" |
+| 4 | **Tabel blackbox modul dashboard & kuisioner** | **MAU** | `docs/testing/blackbox-testing.md` baru memuat AUT (18), RBAC (14), dan SSO (18+5) — seluruhnya modul HNR |
+| 5 | **Laporan Bab 1–5 masing-masing** + abstrak & lampiran | Masing-masing | 🔍 |
+| 6 | **Serah terima sistem & dokumentasi** ke Dinkominfo | Bersama | Hari terakhir KP |
+
+**Baik untuk ada** — tidak menghalangi serah terima:
+
+| # | Pekerjaan | Pemilik | Catatan |
+|---|---|---|---|
+| 7 | **Single Logout (SLO) back-channel** | **HNR** | Permintaan pembimbing lapangan. Analisis selesai: `sid` sebagai penentu, `sub` sebagai penyaring, disimpan di payload sesi sehingga **tanpa perubahan skema**. Terhenti menunggu verifikasi bahwa Keycloak menyertakan `sid` pada ID token. Catatan: SLO **tidak dapat diuji ujung-ke-ujung dari lokal** karena Keycloak instansi tidak dapat menjangkau `127.0.0.1`; pembuktian ditempuh lewat test otomatis |
+| 8 | **Uji tampilan responsif** (desktop & mobile) | **MAU** | 🔍 Tidak terlihat dari kode |
+| 9 | **Screenshot seluruh halaman** untuk lampiran laporan | Masing-masing | 🔍 |
+| 10 | **Catatan `npm run build` setelah `git pull`** di README | **HNR** | Aset frontend yang tertinggal membuat tampilan menyimpang **tanpa pesan error** — pernah terjadi pada chip kategori dashboard |
+| 11 | **Cabut pin sementara `symfony/*` `7.4.*`** dari `composer.json` | **HNR** | Pasca-KP, saat peningkatan ke Symfony 8 dikerjakan sebagai pekerjaan tersendiri; alasannya terdokumentasi di README §10.6 |
 
 ---
 
