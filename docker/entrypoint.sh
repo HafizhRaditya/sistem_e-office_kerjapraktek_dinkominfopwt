@@ -37,6 +37,9 @@ mkdir -p \
 
 # The volume mounts as root unless told otherwise; PHP-FPM runs as www-data and
 # would not be able to write a single log line.
+#
+# Done here so the artisan commands below can write, and AGAIN after them —
+# see the note at the end. Both passes are needed.
 chown -R www-data:www-data storage bootstrap/cache
 chmod -R u+rwX,g+rwX storage bootstrap/cache
 
@@ -77,6 +80,25 @@ if [ "${EOFFICE_SKIP_CACHE:-0}" != "1" ]; then
 else
     echo "[entrypoint] EOFFICE_SKIP_CACHE=1 — melewati pembangunan cache"
 fi
+
+# ---------------------------------------------------------------------------
+# 4. Ownership, again — and this pass is the one that matters
+#
+# Everything above ran as root, so every file those commands created belongs to
+# root: the compiled views, the cached config and routes, and — the dangerous
+# one — storage/logs/laravel.log if any of them happened to log a line.
+#
+# PHP-FPM's workers run as www-data. A root-owned laravel.log means they can
+# never append to it again, and Laravel does not complain about that: it simply
+# stops logging. A system that has quietly stopped recording anything looks
+# exactly like a system with nothing to record, which is the worst way for this
+# to fail.
+#
+# Chowning once before the commands is not enough, because the files did not
+# exist yet. This second pass is what actually makes them writable.
+# ---------------------------------------------------------------------------
+chown -R www-data:www-data storage bootstrap/cache
+chmod -R u+rwX,g+rwX storage bootstrap/cache
 
 echo "[entrypoint] siap. Menjalankan: $*"
 

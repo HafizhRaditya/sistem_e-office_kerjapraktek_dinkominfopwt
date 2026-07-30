@@ -91,7 +91,13 @@ class ApplicationLinkController extends Controller
                     ->where('application_id', $application->id)
                     ->ignore($link?->id),
             ],
-            'url' => ['required', 'url', 'max:500'],
+            // url:http,https, not a bare `url`. The bare rule accepts any
+            // scheme — javascript:, data:, file: — and this value is handed
+            // straight to redirect()->away() in LaunchController. The error
+            // message below already promised this restriction; the rule did not
+            // enforce it. Banner and Questionnaire have always used the scheme
+            // list, so this also stops the three from disagreeing.
+            'url' => ['required', 'url:http,https', 'max:500'],
             'sort_order' => ['required', 'integer', 'min:0'],
         ], [
             'label.required' => 'Label wajib diisi.',

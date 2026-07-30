@@ -704,10 +704,12 @@ KEYCLOAK_CLIENT_SECRET=
 KEYCLOAK_REDIRECT_URI=
 
 LOG_CHANNEL=stack
+LOG_STACK=daily                # WAJIB — lihat catatan di bawah
+LOG_DAILY_DAYS=14
 LOG_LEVEL=warning
 ```
 
-Empat variabel yang perilakunya tidak terduga bila salah:
+Lima variabel yang perilakunya tidak terduga bila salah:
 
 **`TURNSTILE_SECRET` — kosong di produksi berarti login DITOLAK seluruhnya.**
 Ini disengaja (`AuthController::turnstilePasses`). Di `local`/`testing` verifikasi
@@ -734,6 +736,16 @@ dipublikasikan sama sekali, jadi `*` masih dapat diterima. Pada Jalur B, atau
 bila port aplikasi terbuka, isi dengan alamat IP proxy yang sebenarnya —
 header `X-Forwarded-For` dapat dipalsukan, dan itu memalsukan alamat IP yang
 tercatat di jejak audit.
+
+**`LOG_STACK=daily`, jangan `single`.** Driver `single` menulis ke **satu berkas
+selamanya**, tanpa apa pun yang menghentikannya. Di server itu berarti berkas log
+tumbuh sampai memenuhi disk — dan ketika disk penuh, aplikasi ikut mati. Pada
+Jalur A berkas itu hidup di volume `eoffice-storage`, jadi ia bertahan melewati
+setiap redeploy dan hanya bertambah. Driver `daily` merotasinya dan menyimpan
+sebanyak `LOG_DAILY_DAYS` hari (bawaan 14).
+
+Sebagai gambaran skalanya: basis data pengembangan di laptop tim sudah
+menghasilkan `laravel.log` berukuran **14 MB** hanya dari pemakaian sehari-hari.
 
 ---
 
