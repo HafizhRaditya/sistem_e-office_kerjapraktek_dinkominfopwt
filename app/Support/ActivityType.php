@@ -13,6 +13,13 @@ final class ActivityType
 
     public const LOGOUT = 'logout';
 
+    /**
+     * Session ended by Keycloak itself, over the back channel — the employee
+     * signed out of another application and the OP told us to drop this session
+     * too. Kept distinct from LOGOUT because nobody pressed anything here.
+     */
+    public const LOGOUT_SSO_BACKCHANNEL = 'logout_sso_backchannel';
+
     public const PASSWORD_CHANGED = 'password_changed';
 
     public const PASSWORD_RESET = 'password_reset';
@@ -77,6 +84,7 @@ final class ActivityType
             self::LOGIN_FAILED => 'Login gagal',
             self::LOGIN_SSO => 'Login SSO (Keycloak)',
             self::LOGOUT => 'Logout',
+            self::LOGOUT_SSO_BACKCHANNEL => 'Logout SSO (back-channel)',
             self::PASSWORD_CHANGED => 'Ubah kata sandi',
             self::PASSWORD_RESET => 'Reset kata sandi',
             self::APP_LAUNCHED => 'Membuka aplikasi',

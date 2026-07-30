@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Facile\JoseVerifier\JWK\JwksProviderBuilder;
+use Facile\JoseVerifier\JWTVerifier;
 use Facile\OpenIDClient\Client\ClientBuilder;
 use Facile\OpenIDClient\Client\ClientInterface as OpenIDClient;
 use Facile\OpenIDClient\Client\Metadata\ClientMetadata;
@@ -18,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Psr\Http\Client\ClientInterface as PsrHttpClient;
 use RuntimeException;
+use Throwable;
 
 /**
  * Keycloak SSO (OIDC) — the SECOND login path beside NIP/NIK.
@@ -49,6 +51,20 @@ final class KeycloakOidcService
 
     /** Kept so logout can send id_token_hint to Keycloak's end_session endpoint. */
     public const SESSION_ID_TOKEN = 'keycloak_id_token';
+
+    /**
+     * The OP's session id (`sid` claim) this login belongs to.
+     *
+     * Back-channel logout arrives naming a `sid`, not a portal session, so this
+     * is the only thing that ties Keycloak's notion of the session to ours.
+     * Kept in the session payload rather than a lookup table: it needs no
+     * migration, and it cannot go stale — when the session dies the mapping
+     * dies with it.
+     */
+    public const SESSION_SID = 'keycloak_sid';
+
+    /** The single event that makes a logout token a logout token (OIDC BCL 1.0 §2.4). */
+    public const BACKCHANNEL_LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
 
     private ?IssuerInterface $issuer = null;
 
@@ -180,6 +196,79 @@ final class KeycloakOidcService
         ], static fn (?string $value): bool => filled($value));
 
         return (string) $metadata->get('end_session_endpoint').'?'.http_build_query($params);
+    }
+
+    /**
+     * Verify a back-channel logout token and return its claims (OIDC Back-Channel
+     * Logout 1.0 §2.6).
+     *
+     * This endpoint is unauthenticated by design — Keycloak calls it
+     * server-to-server with no session and no CSRF token — so the token itself
+     * is the ONLY evidence that the request is genuine. Everything below either
+     * verifies it or throws; there is no path that returns unverified claims.
+     *
+     * The cryptography is not hand-rolled. JWTVerifier resolves the signing key
+     * from the token's `kid` against the issuer's JWKS (reloading the JWKS if
+     * the kid is unknown, so key rotation does not break logout) and checks the
+     * signature, `iss`, `aud`, `exp`, `iat` and `nbf`. Only the rules specific
+     * to logout tokens are applied here, because a general-purpose JWT verifier
+     * has no reason to know them.
+     *
+     * @return array<string, mixed> the verified claims
+     *
+     * @throws RuntimeException when the token is not a valid logout token
+     */
+    public function verifyLogoutToken(string $logoutToken): array
+    {
+        $this->assertEnabled();
+
+        $metadata = $this->issuer()->getMetadata();
+
+        $verifier = new JWTVerifier(
+            issuer: (string) $this->issuerUrl(),
+            clientId: (string) config('services.keycloak.client_id'),
+            clientSecret: (string) config('services.keycloak.client_secret'),
+            jwksProvider: (new JwksProviderBuilder())
+                ->withHttpClient($this->httpClient)
+                ->withRequestFactory(new HttpFactory())
+                ->withJwksUri((string) $metadata->get('jwks_uri'))
+                ->build(),
+        );
+
+        try {
+            // Signature + iss/aud/exp/iat/nbf. Throws on anything wrong.
+            //
+            // JWTVerifier additionally requires `sub` and `exp`, which the spec
+            // marks optional for logout tokens. Keycloak sends both, and the
+            // failure mode of being stricter is that a session is NOT ended —
+            // exactly what happens today without this feature at all. Refusing
+            // an unusual token is the safe direction to be wrong in.
+            $claims = $verifier->verify($logoutToken);
+        } catch (Throwable $e) {
+            throw new RuntimeException('Logout token tidak lolos verifikasi: '.$e->getMessage(), 0, $e);
+        }
+
+        // §2.4: the token MUST carry the back-channel logout event. Without this
+        // check any ID token Keycloak ever issued — which clients legitimately
+        // hold — would be accepted here as a logout instruction.
+        $events = $claims['events'] ?? null;
+
+        if (! is_array($events) || ! array_key_exists(self::BACKCHANNEL_LOGOUT_EVENT, $events)) {
+            throw new RuntimeException('Logout token tidak memuat klaim events back-channel logout.');
+        }
+
+        // §2.4: a logout token MUST NOT contain `nonce`. Its presence is the
+        // signature of an ID token being replayed as a logout token.
+        if (array_key_exists('nonce', $claims)) {
+            throw new RuntimeException('Logout token memuat nonce; itu menandakan ID token yang diputar ulang.');
+        }
+
+        // §2.4: sub, sid, or both — but not neither, or there is nothing to end.
+        if (blank($claims['sub'] ?? null) && blank($claims['sid'] ?? null)) {
+            throw new RuntimeException('Logout token tidak memuat sub maupun sid.');
+        }
+
+        return $claims;
     }
 
     /** Issuer URL, e.g. https://host/realms/EOffice — the discovery root. */

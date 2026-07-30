@@ -1,0 +1,73 @@
+# Build context exclusions.
+#
+# Everything here is either rebuilt inside the image, secret, or irrelevant to
+# the running application. Keeping the context small also keeps `docker build`
+# from shipping the whole vendor/ and node_modules/ tree to the daemon.
+
+# Reinstalled inside the image by composer / npm.
+vendor/
+node_modules/
+
+# Rebuilt inside the image by `npm run build`. Shipping the host's copy would
+# let a stale local build silently win over the one the image just made.
+public/build/
+public/hot
+public/fonts-manifest.dev.json
+
+# Secrets. The container reads configuration from the environment
+# (docker-compose env_file), never from a baked-in .env.
+.env
+.env.*
+!.env.example
+auth.json
+
+# Version control and tooling.
+.git/
+.gitattributes
+.gitignore
+.editorconfig
+.github/
+.claude/
+.codex/
+.cursor/
+.idea/
+.vscode/
+.zed/
+.nova/
+.phpactor.json
+
+# Tests do not run in the production image; composer install --no-dev skips
+# their dependencies anyway.
+tests/
+phpunit.xml
+.phpunit.result.cache
+.phpunit.cache/
+
+# The SSO demonstrator is a laptop tool, not part of the system. It is a second
+# Keycloak client used to prove single sign-on across two apps, and it has its
+# own Node server — it must never be deployed with the portal.
+demo-sso/
+
+# Local runtime state. The image ships an empty storage skeleton and the real
+# data lives on a named volume.
+storage/app/public/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/testing/*
+storage/framework/views/*
+storage/logs/*
+*.log
+
+# Documentation and design assets — not needed at runtime.
+docs/
+ERD/
+Mockup/
+readme/
+*.md
+
+# Host noise.
+.DS_Store
+Thumbs.db
+Homestead.json
+Homestead.yaml
+_ide_helper.php

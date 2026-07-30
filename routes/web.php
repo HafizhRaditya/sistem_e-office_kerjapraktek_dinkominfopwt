@@ -47,6 +47,13 @@ Route::post('/login', [AuthController::class, 'login'])->name('login.attempt');
 Route::get('/auth/keycloak/redirect', [KeycloakController::class, 'redirect'])->name('keycloak.redirect');
 Route::get('/auth/keycloak/callback', [KeycloakController::class, 'callback'])->name('keycloak.callback');
 
+// Back-channel logout: Keycloak calls this server-to-server when the employee
+// signs out somewhere else. No browser, no session, no CSRF token — the signed
+// logout token is the whole of the authentication, and it is exempted from CSRF
+// in bootstrap/app.php for that reason.
+Route::post('/auth/keycloak/backchannel-logout', [KeycloakController::class, 'backchannelLogout'])
+    ->name('keycloak.backchannel-logout');
+
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/kuisioner/{questionnaire}/klik', [QuestionnaireController::class, 'click'])
