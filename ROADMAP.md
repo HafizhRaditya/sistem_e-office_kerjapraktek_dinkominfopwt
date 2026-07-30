@@ -114,9 +114,11 @@
 **Deliverable Fase 3:** sistem ter-deploy, lolos UAT, dokumentasi teknis lengkap.
 
 **Status Fase 3: 🔄 berjalan.** Pekerjaan fitur dan pengujian otomatis sudah selesai
-(**187 test lolos, 975 assertion**), tetapi **deployment nyata dan UAT belum dilakukan**,
+(**238 test lolos, 1156 assertion**), tetapi **deployment nyata dan UAT belum dilakukan**,
 sehingga fase ini belum dapat dinyatakan selesai. Deployment akan ditempuh lewat
-**Docker** (lihat Sisa Pekerjaan butir 1).
+**Docker** (lihat Sisa Pekerjaan butir 1); berkas kontainernya sudah ada di repo
+tetapi **belum pernah dibangun** — `docker compose build` masih harus dijalankan
+dan berhasil lebih dulu.
 
 ---
 
@@ -144,7 +146,7 @@ ada di repo**, bukan dari rencana. Kegiatan yang tidak meninggalkan jejak di rep
 | **0 — Analisis & desain** | ✅ Selesai | `ERD/ERD_v2.1_final.png`, `ERD/ERD_v2.md`, `ERD/schema.sql`, `ERD/KF_AUTH_RBAC.md`, `ERD/KF_DASHBOARD_KUISIONER.md`, `Mockup/mockup_dashboard_v2.html`, `readme/inventaris_*.md` |
 | **1 — Fondasi** | ✅ Selesai | Login `nip_nik`, sesi, ubah sandi, rate limiting, Turnstile aktif, dashboard grid dari DB, penghitung kunjungan — seluruhnya tertutup test |
 | **2 — Fitur inti** | ✅ Selesai | Panel admin (akses, aplikasi, tautan, pengguna, OPD, kategori, banner, kuisioner, log, ringkasan), RBAC 403, activity log, statistik partisipasi |
-| **3 — Integrasi & UAT** | 🔄 **Berjalan** | Fitur & pengujian otomatis selesai (kategori, SSO Keycloak, aplikasi peraga, kesiapan deployment, **187 test**). **Deployment nyata dan UAT belum dilakukan** |
+| **3 — Integrasi & UAT** | 🔄 **Berjalan** | Fitur & pengujian otomatis selesai (kategori, SSO Keycloak, aplikasi peraga, single logout back-channel, berkas kontainer, **238 test**). **Deployment nyata dan UAT belum dilakukan; berkas Docker belum pernah dibangun** |
 | **4 — Laporan & penutupan** | ⏳ Belum | Tidak ada artefak laporan di repo |
 
 **Ditandai 🔍 — tidak terlihat dari kode, status sebenarnya hanya diketahui HNR/MAU:**

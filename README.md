@@ -150,9 +150,10 @@ controller, migration, test), bukan dari rencana:
 
 **Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis
 sudah rampung — manajemen kategori, SSO Keycloak, aplikasi peraga `demo-sso/`,
-kesiapan deployment, serta **187 test lolos (975 assertion)** — tetapi **deployment
-nyata dan UAT bersama pembimbing lapangan belum dilakukan**. Deployment akan
-ditempuh lewat **Docker**.
+single logout back-channel, berkas kontainer, serta **238 test lolos
+(1156 assertion)** — tetapi **deployment nyata dan UAT bersama pembimbing lapangan
+belum dilakukan**. Deployment akan ditempuh lewat **Docker**, dan berkas
+kontainernya sendiri **belum pernah dibangun** (lihat §12.8).
 
 Sisa pekerjaan sampai akhir KP (daftar lengkap beserta pemiliknya ada di
 **ROADMAP.md**, dipisah antara yang *menghalangi serah terima* dan yang *baik untuk
