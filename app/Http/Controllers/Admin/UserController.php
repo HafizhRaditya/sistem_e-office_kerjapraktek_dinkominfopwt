@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Opd;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Rules\UniqueNipNik;
 use App\Support\ActivityType;
 use App\Support\UserSessions;
 use Illuminate\Http\Request;
@@ -190,7 +191,9 @@ class UserController extends Controller
     {
         $rules = [
             'name' => ['required', 'string', 'max:150'],
-            'nip_nik' => ['required', 'string', 'max:20', Rule::unique('users', 'nip_nik')->ignore($user?->id)],
+            // Case-insensitive: see App\Rules\UniqueNipNik. Rule::unique() would
+            // compare exactly and let "ADMIN001" through beside "admin001".
+            'nip_nik' => ['required', 'string', 'max:20', new UniqueNipNik($user?->id)],
             'email' => ['nullable', 'email', 'max:150', Rule::unique('users', 'email')->ignore($user?->id)],
             'opd_id' => [
                 'required',
@@ -215,7 +218,8 @@ class UserController extends Controller
         $validated = $request->validate($rules, array_merge([
             'name.required' => 'Nama wajib diisi.',
             'nip_nik.required' => 'NIP/NIK wajib diisi.',
-            'nip_nik.unique' => 'NIP/NIK sudah dipakai pengguna lain.',
+            // No 'nip_nik.unique' entry: uniqueness is enforced by UniqueNipNik,
+            // which carries its own message.
             'nip_nik.max' => 'NIP/NIK maksimal 20 karakter.',
             'email.email' => 'Format email tidak valid.',
             'email.unique' => 'Email sudah dipakai pengguna lain.',

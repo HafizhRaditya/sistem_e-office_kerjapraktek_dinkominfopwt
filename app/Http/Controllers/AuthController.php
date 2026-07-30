@@ -86,7 +86,47 @@ class AuthController extends Controller
             ]);
         }
 
-        $user = User::where('nip_nik', $credentials['nip_nik'])->first();
+        // Case-insensitive, matching the Keycloak path (see KeycloakController).
+        // The two doors used to disagree: an employee whose nip_nik is stored as
+        // "ADMIN001" could sign in through SSO typing "admin001", but not here.
+        // The throttle key was already lowercased, so this makes the lookup
+        // agree with the rate limiting that was already counting it as one
+        // identity.
+        $candidates = User::whereRaw('lower(nip_nik) = lower(?)', [$credentials['nip_nik']])->get();
+
+        $user = $candidates->first();
+
+        // UNIQUE(nip_nik) is case-sensitive in PostgreSQL, so two accounts
+        // differing only in case can legally exist in data created before
+        // App\Rules\UniqueNipNik started refusing them.
+        if ($candidates->count() > 1) {
+            // An exact-case match wins. The employee typed this identity
+            // literally, and it is precisely what the old exact lookup would
+            // have resolved — so existing staff on colliding rows keep getting
+            // in. Refusing outright here would lock out BOTH of them, turning a
+            // consistency fix into an outage for the very people it is about.
+            $user = $candidates->first(
+                static fn (User $candidate): bool => $candidate->nip_nik === $credentials['nip_nik']
+            );
+
+            // No exact match: what was typed genuinely fits more than one
+            // account, and picking one could sign somebody into a colleague's.
+            // Refuse — the same decision the SSO path makes.
+            if ($user === null) {
+                RateLimiter::hit($key, self::DECAY_SECONDS);
+                $this->activityLogger->record(
+                    $request,
+                    ActivityType::LOGIN_FAILED,
+                    "Login ditolak: {$credentials['nip_nik']} cocok dengan lebih dari satu akun (perbedaan huruf besar-kecil).",
+                    subjectType: 'login_identity',
+                    subjectLabel: $credentials['nip_nik'],
+                );
+
+                throw ValidationException::withMessages([
+                    'nip_nik' => 'NIP/NIK ini cocok dengan lebih dari satu akun E-Office. Hubungi admin OPD.',
+                ]);
+            }
+        }
 
         if (! $user || ! Hash::check($credentials['password'], $user->password)) {
             RateLimiter::hit($key, self::DECAY_SECONDS);

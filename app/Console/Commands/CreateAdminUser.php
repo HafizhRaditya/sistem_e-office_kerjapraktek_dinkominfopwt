@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Opd;
 use App\Models\User;
+use App\Rules\UniqueNipNik;
 use App\Services\ActivityLogger;
 use App\Support\ActivityType;
 use Illuminate\Console\Command;
@@ -75,14 +76,16 @@ class CreateAdminUser extends Command
             'password' => $password,
             'password_confirmation' => $passwordConfirmation,
         ], [
-            'nip_nik' => ['required', 'string', 'max:20', 'unique:users,nip_nik'],
+            // Case-insensitive, same as the admin panel (App\Rules\UniqueNipNik).
+            'nip_nik' => ['required', 'string', 'max:20', new UniqueNipNik()],
             'name' => ['required', 'string', 'max:150'],
             'email' => ['nullable', 'email', 'max:150', 'unique:users,email'],
             // Same policy as the admin panel (FR-A06).
             'password' => ['required', 'string', 'min:8', 'confirmed', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
         ], [
             'nip_nik.required' => 'NIP/NIK wajib diisi.',
-            'nip_nik.unique' => 'NIP/NIK sudah dipakai pengguna lain.',
+            // No 'nip_nik.unique' entry: uniqueness is enforced by UniqueNipNik,
+            // which carries its own message.
             'nip_nik.max' => 'NIP/NIK maksimal 20 karakter.',
             'name.required' => 'Nama wajib diisi.',
             'email.email' => 'Format email tidak valid.',
