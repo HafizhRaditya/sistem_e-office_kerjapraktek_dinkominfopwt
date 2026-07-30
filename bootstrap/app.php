@@ -44,6 +44,15 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [
             EnsureUserIsActive::class,
         ]);
+
+        // Keycloak's back-channel logout call is server-to-server: no browser,
+        // no session, and therefore no CSRF token it could possibly send. The
+        // signed logout token is what authenticates that request instead, and
+        // KeycloakController refuses anything it cannot verify against the
+        // realm's JWKS. This exemption is scoped to that one path.
+        $middleware->validateCsrfTokens(except: [
+            'auth/keycloak/backchannel-logout',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

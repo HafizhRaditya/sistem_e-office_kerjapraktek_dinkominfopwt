@@ -423,6 +423,55 @@ aplikasi gagal, migration tertinggal adalah tersangka pertama.
 > 8 dikerjakan sebagai pekerjaan tersendiri yang direview sadar. Laravel 13 sendiri
 > sudah menerima `^7.4 || ^8.0`, jadi pin ini membekukan waktu, bukan batas teknis.
 
+### 10.7 Back-channel logout (Single Logout)
+
+Tanpa ini, keluar dari satu aplikasi tidak mengeluarkan pegawai dari aplikasi
+lain: sesi portal tetap hidup sampai kedaluwarsa sendiri, meski Keycloak sudah
+menganggap orangnya keluar.
+
+Portal sudah menyediakan endpointnya:
+
+```
+POST /auth/keycloak/backchannel-logout
+```
+
+Keycloak memanggilnya **server-ke-server** — tanpa browser, tanpa sesi, tanpa
+token CSRF. Yang membuktikan panggilan itu asli hanyalah *logout token* yang
+ditandatangani realm; portal memverifikasi tanda tangannya terhadap JWKS realm,
+memeriksa `iss`, `aud`, `exp`, `iat`, klaim `events`, ketiadaan `nonce`, serta
+menolak token yang sama bila dikirim dua kali. Apa pun yang gagal salah satu
+pemeriksaan itu dijawab `400` dan tidak mengakhiri sesi apa pun.
+
+**Yang harus diisi di sisi Keycloak** — Clients → `eoffice-portal` → Settings:
+
+| Kolom | Nilai |
+|---|---|
+| Backchannel logout URL | `https://<domain>/auth/keycloak/backchannel-logout` |
+| Backchannel logout session required | **On** |
+| Backchannel logout revoke offline sessions | sesuai kebijakan instansi |
+
+**[perlu Dinkominfo]** — pengisian ini butuh akses admin realm produksi.
+
+`Backchannel logout session required: On` yang membuat Keycloak menyertakan
+klaim `sid`. Dengan `sid`, portal mengakhiri **tepat satu** sesi — sesi yang
+benar-benar keluar. Tanpanya, token hanya membawa `sub`, dan portal terpaksa
+mengakhiri **seluruh** sesi pegawai tersebut, termasuk di perangkat lain yang
+tidak ikut keluar.
+
+Realm dev Dinkominfo sudah mengiklankan dukungan ini
+(`backchannel_logout_session_supported: true` pada dokumen discovery), jadi
+tinggal kolom di atas yang perlu diisi.
+
+**Memastikan sudah aktif:** masuk ke portal lewat SSO, lalu keluar dari
+Keycloak di tempat lain (account console, atau aplikasi klien lain). Muat ulang
+halaman portal — seharusnya kembali ke halaman login. Bila tetap masuk,
+periksa `storage/logs/laravel.log`: penolakan logout token tercatat di sana
+dengan alasannya.
+
+Endpoint ini ikut aturan yang sama dengan dua rute SSO lainnya — bila
+`KEYCLOAK_*` kosong, ia **404**, sehingga deployment tanpa SSO tidak
+memaparkan apa pun.
+
 ---
 
 ## 11. `demo-sso/` — alat peraga SSO (bukan bagian sistem)

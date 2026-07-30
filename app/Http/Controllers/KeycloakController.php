@@ -7,10 +7,12 @@ use App\Services\ActivityLogger;
 use App\Services\KeycloakOidcService;
 use App\Support\ActivityType;
 use App\Support\AuthLanding;
+use App\Support\UserSessions;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -231,6 +233,20 @@ class KeycloakController extends Controller
             $request->session()->put(KeycloakOidcService::SESSION_ID_TOKEN, $idToken);
         }
 
+        // The OP's session id. Back-channel logout arrives naming this and
+        // nothing else, so without it stored here that request has no way to
+        // find the portal session it is meant to end.
+        //
+        // The realm advertises backchannel_logout_session_supported: true,
+        // which per OIDC BCL 1.0 is exactly the promise that `sid` is present
+        // in ID tokens. Stored conditionally anyway: a realm that later turns
+        // that setting off should degrade to "no back-channel logout", not to
+        // a callback that fails.
+        $sid = isset($claims['sid']) ? (string) $claims['sid'] : null;
+        if (filled($sid)) {
+            $request->session()->put(KeycloakOidcService::SESSION_SID, $sid);
+        }
+
         $this->activityLogger->record(
             $request,
             ActivityType::LOGIN_SSO,
@@ -240,6 +256,83 @@ class KeycloakController extends Controller
         );
 
         return redirect()->intended(AuthLanding::homeFor($user));
+    }
+
+    /**
+     * Back-channel logout (OIDC Back-Channel Logout 1.0).
+     *
+     * Keycloak calls this server-to-server when the employee signs out
+     * elsewhere — another client, or the Keycloak account console. There is no
+     * browser, no session and no CSRF token on this request, so the logout
+     * token is the ONLY evidence it is genuine; KeycloakOidcService verifies it
+     * completely or throws.
+     *
+     * Responses are deliberately uninformative. The spec wants 200 on success
+     * and 400 on a bad token, and an unauthenticated endpoint should not
+     * explain to whoever is probing it whether a subject exists, whether it had
+     * sessions, or why a token was rejected. The detail goes to the log and the
+     * activity trail instead.
+     */
+    public function backchannelLogout(Request $request)
+    {
+        $this->assertEnabled();
+
+        $logoutToken = (string) $request->input('logout_token', '');
+
+        if (blank($logoutToken)) {
+            return response('', 400);
+        }
+
+        try {
+            $claims = $this->keycloak->verifyLogoutToken($logoutToken);
+        } catch (Throwable $e) {
+            Log::warning('Keycloak: logout token back-channel ditolak.', ['exception' => $e]);
+
+            return response('', 400);
+        }
+
+        $subject = isset($claims['sub']) ? (string) $claims['sub'] : null;
+        $sid = isset($claims['sid']) ? (string) $claims['sid'] : null;
+
+        // Replay guard. A logout token is single-use; the same one arriving
+        // twice is either a retry or a replay, and neither should run again.
+        // `add` is atomic, so two simultaneous deliveries cannot both win.
+        $jti = isset($claims['jti']) ? (string) $claims['jti'] : null;
+        if (filled($jti) && ! Cache::add('kc-logout-jti:'.sha1($jti), true, now()->addMinutes(10))) {
+            return response('', 200);
+        }
+
+        // `sub` is the authoritative link to a local account — the same claim
+        // the login callback binds to keycloak_id.
+        $user = filled($subject) ? User::where('keycloak_id', $subject)->first() : null;
+
+        if (! $user) {
+            // Nothing to end: this subject was never linked to a portal account.
+            // Still a 200 — the OP did its part correctly, and there is no
+            // reason to tell an unauthenticated caller that the subject is
+            // unknown here.
+            return response('', 200);
+        }
+
+        // With a sid, end exactly that session. Without one, the token refers to
+        // every session this subject has, which is what `sub`-only means.
+        $ended = filled($sid)
+            ? UserSessions::purgeByKeycloakSid($user->id, $sid)
+            : UserSessions::purge($user->id);
+
+        if ($ended > 0) {
+            $this->activityLogger->record(
+                $request,
+                ActivityType::LOGOUT_SSO_BACKCHANNEL,
+                "Sesi diakhiri oleh Keycloak (back-channel logout): {$ended} sesi.",
+                subject: $user,
+                properties: ['sesi_diakhiri' => $ended, 'memakai_sid' => filled($sid)],
+                // Nobody was logged in on this request; the OP is the actor.
+                actorId: null,
+            );
+        }
+
+        return response('', 200);
     }
 
     /** SSO off (or half-configured) means the routes do not exist at all. */
