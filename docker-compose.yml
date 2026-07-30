@@ -1,0 +1,125 @@
+# E-Office Banyumas — production compose file.
+#
+# Three services: `app` (PHP-FPM), `web` (Nginx), `db` (PostgreSQL 18).
+# Only `web` publishes a port. `app` and `db` are reachable on the internal
+# network alone, which is what lets TRUSTED_PROXIES stay narrow.
+#
+# NOT BUILT OR TESTED YET — written on a machine without Docker installed.
+# Run `docker compose build` and `docker compose config` before using this.
+
+services:
+  # -------------------------------------------------------------------------
+  # PHP-FPM — the application itself
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      target: app
+    image: eoffice-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # DB_HOST is the compose SERVICE NAME, resolved by Docker's embedded DNS.
+      # NOT 127.0.0.1 — inside this container that is the app container itself,
+      # where nothing is listening on 5432. Set here rather than left to .env so
+      # a copied-from-laptop .env cannot quietly point the container at itself.
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_CONNECTION: pgsql
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Uploaded banners, application icons, questionnaire images, framework
+      # caches and logs. WITHOUT THIS VOLUME every upload is destroyed on the
+      # next `docker compose up --build`, because a container's writable layer
+      # is discarded with the container.
+      - eoffice-storage:/var/www/html/storage
+    networks:
+      - eoffice
+
+  # -------------------------------------------------------------------------
+  # Nginx — the only service exposed to the outside
+  # -------------------------------------------------------------------------
+  web:
+    build:
+      context: .
+      target: web
+    image: eoffice-web:latest
+    restart: unless-stopped
+    ports:
+      # Host 8080 -> container 80. Put the institution's TLS terminator or
+      # reverse proxy in front of this; do not publish 80/443 directly until
+      # certificates are settled with Dinkominfo.
+      - "8080:80"
+    # Nginx resolves `app` in fastcgi_pass when it loads its config, so the app
+    # container must at least EXIST by then or Nginx exits on startup.
+    # depends_on gives that ordering (container started, not necessarily ready),
+    # and `restart: unless-stopped` above covers the race if it loses anyway.
+    depends_on:
+      - app
+    volumes:
+      # Read-only, and mounted for ONE reason: the public/storage symlink baked
+      # into this image points at ../storage/app/public, so Nginx can only serve
+      # uploaded images if that directory is present in its filesystem too.
+      # Nginx never writes here.
+      - eoffice-storage:/var/www/html/storage:ro
+    networks:
+      - eoffice
+
+  # -------------------------------------------------------------------------
+  # PostgreSQL 18
+  # -------------------------------------------------------------------------
+  db:
+    image: postgres:18-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-sistem_eoffice}
+      POSTGRES_USER: ${DB_USERNAME:-eoffice}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD wajib diisi di .env}
+      # UTF8, and a locale that sorts names the way a person would expect.
+      #
+      # NOT --locale=C, which was the first thing tried here: it sorts by byte
+      # value, so every admin list ordered by name (`orderBy('name')`, used all
+      # over the panel) would put "Zulkifli" before "adi". Determinism was the
+      # argument for it, but lower() on ASCII behaves identically under any
+      # locale, so it bought nothing and cost readable ordering.
+      #
+      # The development database runs on Windows with collation
+      # English_Indonesia.1252, a name that does not exist on Linux — the two
+      # environments cannot be made identical. en_US.UTF-8 is the closest
+      # practical equivalent. Expect minor differences in how mixed-case or
+      # accented names order between a developer's machine and the server.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    # No `ports:` on purpose. The database must not be reachable from outside
+    # the compose network. To inspect it, go through the container:
+    #   docker compose exec db psql -U "$DB_USERNAME" -d "$DB_DATABASE"
+    volumes:
+      # THE database. Named, so `docker compose down` keeps it — only an
+      # explicit `docker compose down -v` destroys it. An anonymous volume or a
+      # bare container layer here would mean every teardown wipes production.
+      - eoffice-db:/var/lib/postgresql/data
+    healthcheck:
+      # `app` waits for this before starting, so the first migration does not
+      # race PostgreSQL's own initialisation.
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-eoffice} -d ${DB_DATABASE:-sistem_eoffice}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - eoffice
+
+# ---------------------------------------------------------------------------
+# Named volumes — the two things that must survive a redeploy.
+# ---------------------------------------------------------------------------
+volumes:
+  eoffice-db:
+    driver: local
+  eoffice-storage:
+    driver: local
+
+networks:
+  eoffice:
+    driver: bridge
