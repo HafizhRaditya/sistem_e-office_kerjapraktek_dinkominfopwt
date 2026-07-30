@@ -90,7 +90,14 @@ class AdminAuditTrailTest extends TestCase
             ->firstOrFail();
 
         $this->assertSame($admin->id, $reset->user_id);
-        $this->assertNull($reset->properties);
+
+        // The entry now records how many sessions the reset evicted (A3). The
+        // count is 0 here because phpunit.xml runs on SESSION_DRIVER=array —
+        // RevokedAccessTest covers the eviction itself on the database driver.
+        // The invariant this guards is unchanged: no password material, in the
+        // description or in the properties.
+        $this->assertArrayHasKey('sesi_dicabut', $reset->properties);
+        $this->assertStringNotContainsString('SandiBaru9', json_encode($reset->properties));
         $this->assertStringNotContainsString('SandiBaru9', $reset->description);
         $this->assertTrue(Hash::check('SandiBaru9', $user->fresh()->password));
     }

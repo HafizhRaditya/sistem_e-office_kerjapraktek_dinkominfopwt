@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureUserIsActive;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -25,6 +26,24 @@ return Application::configure(basePath: dirname(__DIR__))
                 | Request::HEADER_X_FORWARDED_PORT
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
+
+        // Belongs on the `web` group rather than beside 'auth', because
+        // Livewire's update endpoint is registered with `web` only. A search
+        // keystroke on an admin table therefore passes through it too, which is
+        // the whole point: a revoked account must not keep working just because
+        // the interaction avoids the original route.
+        //
+        // Illuminate's AuthenticateSession was the first thing tried here, to
+        // end other sessions when a password changes. It was dropped: it pins a
+        // session to one password hash, so any request that authenticates as a
+        // different user in the SAME session is logged out. Real browsers never
+        // do that, but the test suite does it constantly (one test, several
+        // actingAs() calls), and it broke six existing tests for a reason that
+        // had nothing to do with the behaviour under test. App\Support\UserSessions
+        // does the same job explicitly, at the two points where it matters.
+        $middleware->web(append: [
+            EnsureUserIsActive::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

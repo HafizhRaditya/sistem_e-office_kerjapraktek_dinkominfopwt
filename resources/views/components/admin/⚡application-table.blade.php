@@ -16,6 +16,15 @@ new class extends Component
 {
     use WithPagination;
 
+    /**
+     * Second line of defence for the admin gate — see the note in
+     * ⚡access-table.blade.php.
+     */
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->isAdmin(), 403);
+    }
+
     #[Url(as: 'q', except: '')]
     public string $q = '';
 

@@ -19,6 +19,20 @@ new class extends Component
 {
     use WithPagination;
 
+    /**
+     * Second line of defence for the admin gate.
+     *
+     * boot() runs on the initial render AND on every subsequent Livewire
+     * request, unlike mount(), which only runs on the first. The route
+     * middleware is carried across by addPersistentMiddleware() in
+     * AppServiceProvider; this makes the component refuse on its own even if
+     * that registration is ever lost.
+     */
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->isAdmin(), 403);
+    }
+
     #[Url(as: 'q', except: '')]
     public string $q = '';
 

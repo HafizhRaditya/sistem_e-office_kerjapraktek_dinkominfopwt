@@ -7,6 +7,7 @@ use App\Models\Opd;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Support\ActivityType;
+use App\Support\UserSessions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -148,12 +149,19 @@ class UserController extends Controller
 
         $user->update(['password' => $request->input('password')]);
 
+        // Every session this account has open is ended — none spared, because
+        // the sessions belong to the target, not to the admin doing the reset.
+        // This is the action taken when an account is believed compromised, so
+        // it has to be the action that evicts whoever is in it.
+        $endedSessions = UserSessions::purge($user->id);
+
         // Password values are deliberately never written to the audit trail.
         $this->activityLogger->record(
             $request,
             ActivityType::PASSWORD_RESET,
             "Mereset kata sandi pengguna \"{$user->name}\".",
             subject: $user,
+            properties: ['sesi_dicabut' => $endedSessions],
         );
 
         return redirect()
