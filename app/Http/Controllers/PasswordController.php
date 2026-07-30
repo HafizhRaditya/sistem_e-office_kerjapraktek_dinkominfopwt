@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\ActivityLogger;
 use App\Support\ActivityType;
+use App\Support\UserSessions;
 use Illuminate\Http\Request;
 
 /**
@@ -34,6 +35,13 @@ class PasswordController extends Controller
 
         $user = $request->user();
         $user->update(['password' => $request->input('password')]);
+
+        // Changing a password must also end this account's OTHER sessions. If
+        // somebody else had got in, the password change is the moment they lose
+        // access — leaving their session alive would defeat the point of
+        // changing it. This browser is spared, so the user is not signed out of
+        // the page they are standing on.
+        UserSessions::purge($user->id, $request->session()->getId());
 
         $this->activityLogger->record(
             $request,
