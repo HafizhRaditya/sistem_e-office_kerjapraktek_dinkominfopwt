@@ -8,7 +8,9 @@
 
 **E-Office Banyumas** (`eoffice.banyumaskab.go.id`) adalah portal Single Sign-On (SSO) milik Pemerintah Kabupaten Banyumas yang menjadi pintu masuk tunggal ke 131 aplikasi dinas/pemerintahan ("cukup sekali login untuk semua aplikasi").
 
-Proyek ini adalah **pembangunan ulang (rebuild)** sistem tersebut dalam rangka **Kerja Praktik (KP)** mahasiswa Informatika Universitas Jenderal Soedirman di **Dinkominfo Kabupaten Banyumas**, periode **8 Juli – 7 Agustus 2026**. Target sistem selesai: **31 Juli 2026**.
+Proyek ini adalah **pembangunan ulang (rebuild)** sistem tersebut dalam rangka **Kerja Praktik (KP)** mahasiswa Informatika Universitas Jenderal Soedirman di **Dinkominfo Kabupaten Banyumas**, **Bidang Aplikasi Informatika**, periode **7 Juli – 7 Agustus 2026**. Target sistem selesai: **31 Juli 2026**.
+
+Dasar penempatan: Surat Dinkominfo Kabupaten Banyumas No. **400.14.5.4/2562/VI/2026** tanggal 15 Juni 2026, hal *Jawaban Permohonan Praktek Kerja Lapangan*. Surat memakai istilah **Praktek Kerja Lapangan (PKL)**; di dokumen internal ini istilah yang dipakai adalah **Kerja Praktik (KP)** — keduanya merujuk kegiatan yang sama. Periode resmi dimulai 7 Juli, tetapi proyek baru diserahkan pada 8 Juli sehingga pengerjaan dihitung mulai tanggal tersebut.
 
 ### Alasan rebuild
 Sistem lama berjalan di **PHP 5.5.33** (end-of-life sejak 2016), Nginx 1.10.2, Bootstrap, tanpa framework modern. Perlu diganti dengan stack yang aktif didukung.
@@ -104,7 +106,7 @@ activity_logs           : id, user_id (FK,null), application_id (FK,null), quest
 ```
 sistem_e-office_kerjapraktek_dinkominfopwt/
 ├── README.md            ← file ini (konteks utama untuk manusia & AI)
-├── ROADMAP.md           ← rencana harian 8 Juli – 7 Agustus 2026
+├── ROADMAP.md           ← rencana harian 7 Juli – 7 Agustus 2026
 ├── schema.sql           ← DDL rancangan (validasi ERD; sumber kebenaran = migration)
 ├── docs/
 │   ├── screenshots/     ← 30 screenshot sistem lama (referensi rebuild)
@@ -134,15 +136,32 @@ sistem_e-office_kerjapraktek_dinkominfopwt/
 
 ## 8. Status & Timeline
 
-Lihat **ROADMAP.md** untuk rencana harian. Ringkasan fase:
+Lihat **ROADMAP.md** untuk rencana harian, rincian pekerjaan per fase, dan daftar
+sisa pekerjaan. Ringkasan fase — status ditentukan dari **bukti di repo** (berkas,
+controller, migration, test), bukan dari rencana:
 
 | Fase | Periode | Target | Status |
 |---|---|---|---|
 | 0 — Analisis & desain | 8–10 Jul | ERD v2.1, KF final, mockup, stack final, repo siap | ✅ selesai |
 | 1 — Fondasi | 13–17 Jul | Login → dashboard + grid aplikasi dari DB | ✅ selesai |
-| 2 — Fitur inti | 21–25 Jul | Admin panel + kuisioner & statistik penuh | ✅ selesai |
-| 3 — Integrasi & UAT | 28–31 Jul | Kategori dinamis, Keycloak PoC, UAT | 🔄 berjalan |
-| 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ |
+| 2 — Fitur inti | 20–24 Jul | Panel admin lengkap (akses, aplikasi, tautan, pengguna, OPD, ringkasan) + kuisioner & statistik | ✅ selesai |
+| 3 — Integrasi & UAT | 27–31 Jul | Manajemen kategori (MAU), SSO Keycloak (HNR), aplikasi peraga SSO, kesiapan deployment, blackbox testing, **deployment + UAT** | 🔄 berjalan |
+| 4 — Laporan | 1–7 Agu | Laporan KP final & serah terima | ⏳ belum |
+
+**Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis
+sudah rampung — manajemen kategori, SSO Keycloak, aplikasi peraga `demo-sso/`,
+kesiapan deployment, serta **187 test lolos (975 assertion)** — tetapi **deployment
+nyata dan UAT bersama pembimbing lapangan belum dilakukan**. Deployment akan
+ditempuh lewat **Docker**.
+
+Sisa pekerjaan sampai akhir KP (daftar lengkap beserta pemiliknya ada di
+**ROADMAP.md**, dipisah antara yang *menghalangi serah terima* dan yang *baik untuk
+ada*): deployment Docker · bagian Deployment pada README · UAT · tabel blackbox
+modul dashboard & kuisioner (MAU) · laporan masing-masing · serah terima.
+
+> **Kegiatan di luar repo** — demo internal, presentasi, UAT, uji manual, dan status
+> penulisan laporan — ditandai 🔍 di ROADMAP dan sengaja **tidak** diberi status
+> selesai, karena tidak dapat diverifikasi dari kode.
 
 ---
 
