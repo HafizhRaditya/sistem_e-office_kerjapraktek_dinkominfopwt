@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Opd;
 use App\Models\User;
+use App\Http\Middleware\EnsureUserIsAdmin;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Livewire\Mechanisms\PersistentMiddleware\PersistentMiddleware;
 use Tests\TestCase;
 
 /**
@@ -134,10 +136,23 @@ class LivewireAdminGuardTest extends TestCase
         ]);
     }
 
-    /** The HTML Livewire rendered back, where leaked rows would appear. */
+    /**
+     * The HTML Livewire rendered back, where leaked rows would appear.
+     *
+     * A refused request is not JSON at all (Laravel renders the 403 page), so
+     * this falls back to the raw body instead of blowing up on json() — the
+     * point is to search whatever came back for employee data, whatever shape
+     * it arrived in.
+     */
     private function renderedHtml($response): string
     {
-        $payload = $response->json();
+        $body = $response->getContent();
+
+        $payload = json_decode($body, true);
+
+        if (! is_array($payload)) {
+            return (string) $body;
+        }
 
         return json_encode($payload['components'][0]['effects']['html'] ?? '', JSON_UNESCAPED_UNICODE);
     }
@@ -169,48 +184,43 @@ class LivewireAdminGuardTest extends TestCase
      */
     public function test_pegawai_tidak_bisa_mencari_lewat_endpoint_livewire(): void
     {
-        $served = [];
+        $statuses = [];
 
         foreach (self::SCREENS as $screen => [$path, $component]) {
             $snapshot = $this->captureSnapshotAsAdmin($path, $component);
 
-            $response = $this->actingAs($this->pegawai)
-                ->livewireUpdate($snapshot, updates: ['q' => 'a']);
-
-            if (! in_array($response->status(), [403, 404, 419], true)) {
-                $served[] = "{$screen} (HTTP {$response->status()}, ".
-                    mb_strlen($this->renderedHtml($response)).' karakter HTML dikirim balik)';
-            }
+            $statuses[$screen] = $this->actingAs($this->pegawai)
+                ->livewireUpdate($snapshot, updates: ['q' => 'a'])
+                ->status();
         }
 
+        // 403 exactly, not "anything that is not 200". A 404 or a 419 would
+        // also keep the data in, but for an unrelated reason, and would hide a
+        // regression the day the gate itself stopped firing.
         $this->assertSame(
-            [],
-            $served,
-            'Pencarian lewat endpoint Livewire dilayani untuk PEGAWAI pada: '.implode(' · ', $served)
+            ['Manajemen Hak Akses' => 403, 'Manajemen Pengguna' => 403, 'Manajemen Aplikasi' => 403],
+            $statuses,
+            'Pencarian lewat endpoint Livewire tidak ditolak dengan 403 pada setiap layar admin.'
         );
     }
 
     public function test_pegawai_tidak_bisa_paginasi_lewat_endpoint_livewire(): void
     {
-        $served = [];
+        $statuses = [];
 
         foreach (self::SCREENS as $screen => [$path, $component]) {
             $snapshot = $this->captureSnapshotAsAdmin($path, $component);
 
-            $response = $this->actingAs($this->pegawai)->livewireUpdate(
+            $statuses[$screen] = $this->actingAs($this->pegawai)->livewireUpdate(
                 $snapshot,
                 calls: [['path' => '', 'method' => 'nextPage', 'params' => []]],
-            );
-
-            if (! in_array($response->status(), [403, 404, 419], true)) {
-                $served[] = "{$screen} (HTTP {$response->status()})";
-            }
+            )->status();
         }
 
         $this->assertSame(
-            [],
-            $served,
-            'Paginasi lewat endpoint Livewire dilayani untuk PEGAWAI pada: '.implode(' · ', $served)
+            ['Manajemen Hak Akses' => 403, 'Manajemen Pengguna' => 403, 'Manajemen Aplikasi' => 403],
+            $statuses,
+            'Paginasi lewat endpoint Livewire tidak ditolak dengan 403 pada setiap layar admin.'
         );
     }
 
@@ -227,18 +237,32 @@ class LivewireAdminGuardTest extends TestCase
         $response = $this->actingAs($this->pegawai)
             ->livewireUpdate($snapshot, updates: ['q' => 'admin']);
 
+        // Assert the status before reading the body: it names the reason the
+        // data stayed in, and it settles the response so the refusal is treated
+        // as an outcome under test rather than an unexpected exception.
+        $response->assertForbidden();
+
         $html = $this->renderedHtml($response);
 
-        $this->assertStringNotContainsString(
-            $this->admin->nip_nik,
-            $html,
-            'NIP/NIK administrator terbaca oleh pegawai lewat endpoint Livewire.'
-        );
-
+        // The admin's nip_nik is literally "admin", which also occurs in every
+        // /admin/... URL on the refusal page — too generic to prove anything.
+        // These two needles only appear if the table itself was rendered.
         $this->assertStringNotContainsString(
             $this->admin->name,
             $html,
             'Nama administrator terbaca oleh pegawai lewat endpoint Livewire.'
+        );
+
+        $this->assertStringNotContainsString(
+            'admin.user-table',
+            $html,
+            'Komponen tabel pengguna ikut dirender untuk pegawai.'
+        );
+
+        $this->assertStringNotContainsString(
+            'Nama &amp; NIP/NIK',
+            $html,
+            'Header tabel pengguna terkirim ke pegawai.'
         );
     }
 
@@ -272,16 +296,82 @@ class LivewireAdminGuardTest extends TestCase
         $response = $this->actingAs($demoted->fresh())
             ->livewireUpdate($snapshot, updates: ['q' => 'admin']);
 
+        $status = $response->status();
+        $body = $this->renderedHtml($response);
+
         DB::table('activity_logs')->where('user_id', $demoted->id)->delete();
         User::where('id', $demoted->id)->delete();
 
-        $this->assertContains(
-            $response->status(),
-            [403, 404, 419],
-            'Admin yang sudah diturunkan jadi pegawai masih dilayani endpoint Livewire '.
-            "(HTTP {$response->status()}). Data yang terkirim balik: ".
-            mb_substr($this->renderedHtml($response), 0, 600)
+        $this->assertSame(
+            403,
+            $status,
+            'Admin yang sudah diturunkan jadi pegawai masih dilayani endpoint Livewire. '.
+            'Data yang terkirim balik: '.mb_substr($body, 0, 600)
         );
+    }
+
+    // ===================================================================
+    // 3b. Is the second layer alive, or is it dead code?
+    // ===================================================================
+
+    /**
+     * Prove the component guard is not decorative.
+     *
+     * On the normal path both layers fire and the middleware gets there first,
+     * so a passing test says nothing about the component. This strips
+     * EnsureUserIsAdmin out of Livewire's allow-list — simulating exactly the
+     * failure it exists to survive, a Livewire upgrade that stops replaying it —
+     * and drives the real endpoint again. 'auth' stays on the list, so the
+     * pegawai is still authenticated and the only thing left that can refuse is
+     * the component's own boot().
+     *
+     * Livewire::test() is NOT used for this: it handles aborts differently from
+     * the HTTP endpoint and reports no refusal at all, which would make the
+     * guard look dead when it is not.
+     *
+     * The allow-list is a STATIC property, so it is restored in a finally block;
+     * leaving it stripped would silently disarm every later test in the process.
+     */
+    public function test_komponen_admin_menolak_sendiri_tanpa_bantuan_middleware(): void
+    {
+        $registry = app(PersistentMiddleware::class);
+        $original = $registry->getPersistentMiddleware();
+        $statuses = [];
+
+        $registry->setPersistentMiddleware(array_values(array_filter(
+            $original,
+            static fn ($middleware): bool => $middleware !== EnsureUserIsAdmin::class,
+        )));
+
+        try {
+            foreach (self::SCREENS as $screen => [$path, $component]) {
+                $snapshot = $this->captureSnapshotAsAdmin($path, $component);
+
+                $statuses[$screen] = $this->actingAs($this->pegawai)
+                    ->livewireUpdate($snapshot, updates: ['q' => 'a'])
+                    ->status();
+            }
+        } finally {
+            $registry->setPersistentMiddleware($original);
+        }
+
+        $this->assertSame(
+            ['Manajemen Hak Akses' => 403, 'Manajemen Pengguna' => 403, 'Manajemen Aplikasi' => 403],
+            $statuses,
+            'Tanpa middleware persisten, komponen tidak menolak pegawai sendirian.'
+        );
+    }
+
+    /** The gate must not have locked admins out of their own panel. */
+    public function test_admin_tetap_bisa_memakai_ketiga_tabel(): void
+    {
+        foreach (self::SCREENS as $screen => [$path, $component]) {
+            $snapshot = $this->captureSnapshotAsAdmin($path, $component);
+
+            $this->actingAs($this->admin)
+                ->livewireUpdate($snapshot, updates: ['q' => 'a'])
+                ->assertOk();
+        }
     }
 
     // ===================================================================
