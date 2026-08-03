@@ -298,7 +298,14 @@ class QuestionnaireController extends Controller
 
                     $isHttpUrl = filter_var($value, FILTER_VALIDATE_URL)
                         && in_array(parse_url($value, PHP_URL_SCHEME), ['http', 'https'], true);
-                    $isPublicPath = preg_match('#^/?[A-Za-z0-9][A-Za-z0-9._/-]*$#', $value) === 1;
+                    // The regex allows dots and slashes, so "questionnaires/../../.env"
+                    // matches it. The two guards below are what stop that, and
+                    // they are copied verbatim from ApplicationController, which
+                    // has always had them — the three controllers validate the
+                    // same kind of field and should not disagree about it.
+                    $isPublicPath = preg_match('#^/?[A-Za-z0-9][A-Za-z0-9._/-]*$#', $value) === 1
+                        && ! str_contains($value, '..')
+                        && ! str_contains($value, '\\');
 
                     if (! $isHttpUrl && ! $isPublicPath) {
                         $fail('URL/path gambar harus berupa URL HTTP/HTTPS atau path aset publik yang valid.');
