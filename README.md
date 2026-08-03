@@ -70,11 +70,11 @@ Screenshot lengkap ada di folder `docs/screenshots/` (ss_01–ss_30).
 
 ---
 
-## 5. Skema Database (ringkas — ERD lengkap di `docs/erd/`)
+## 5. Skema Database (ringkas — ERD lengkap di `ERD/`)
 
 ```
 opds                    : id, code (UK), name, is_active, timestamps
-users                   : id, opd_id (FK), nip_nik (UK, login), name, email (UK,null),
+users                   : id, opd_id (FK), nip_nik (UK, login), keycloak_id (UK,null), name, email (UK,null),
                           password, role (CHECK admin|pegawai), is_active, last_login_at, timestamps
 applications            : id, opd_id (FK), name, slug (UK), description, icon,
                           app_group (CHECK smartcity|spbe|tools), is_active, is_new, sort_order, timestamps
@@ -84,10 +84,13 @@ application_links       : id, application_id (FK), label, url, is_active, sort_o
 application_access      : id, application_id (FK), user_id (FK), timestamps  [UNIQUE(application_id,user_id)] -- hak akses per pegawai
 application_visits      : id, application_id (FK), application_link_id (FK,null), user_id (FK), visit_date, visited_at  (tanpa timestamps)
 questionnaires          : id, created_by (FK), title, description, banner_image, target_url,
-                          is_active, starts_at, ends_at (CHECK ends>=starts), timestamps
+                          is_active, starts_at, ends_at (CHECK ends>=starts), sort_order, timestamps
 questionnaire_responses : id, questionnaire_id (FK), user_id (FK), clicked_at  (tanpa timestamps)  [UNIQUE(questionnaire_id,user_id)]
-activity_logs           : id, user_id (FK,null), application_id (FK,null), questionnaire_id (FK,null),
-                          activity_type, description, ip_address, user_agent, created_at
+banners                 : id, created_by (FK), title, description, image_path, target_url,
+                          is_active, starts_at, ends_at, sort_order, timestamps
+activity_logs           : id, user_id (FK,null = PELAKU), application_id (FK,null), questionnaire_id (FK,null),
+                          activity_type, description, subject_type, subject_id, subject_label,
+                          properties (jsonb), ip_address, user_agent, created_at  (tanpa updated_at)
 ```
 
 **Aturan bisnis penting (ditegakkan DI DATABASE, bukan hanya di kode):**
@@ -96,7 +99,8 @@ activity_logs           : id, user_id (FK,null), application_id (FK,null), quest
 - Relasi aplikasi–kategori bersifat many-to-many. Status kategori hanya menentukan kemunculan filter/label kategori di dashboard; status tersebut tidak menentukan kemunculan aplikasi.
 - **1 pegawai = 1 klik per kuisioner** (selamanya): `UNIQUE (questionnaire_id, user_id)`.
 - **1 kunjungan per tombol/pegawai/hari**: UNIQUE INDEX `uq_visit_daily` pada `(COALESCE(application_link_id,-1), user_id, visit_date)` — via raw `DB::statement`. Backend & Frontend aplikasi sama di hari sama = 2 kunjungan; tombol sama 2x sehari = 1.
-- Tabel event (`application_visits`, `questionnaire_responses`, `activity_logs`) tanpa `created_at`/`updated_at` → model `$timestamps = false`.
+- Tabel event (`application_visits`, `questionnaire_responses`, `activity_logs`) memakai `$timestamps = false` pada model. Ketiganya **tidak** punya `updated_at` — sebuah kejadian tidak pernah berubah. Waktunya diisi **oleh basis data** lewat `DEFAULT now()` (`visited_at`, `clicked_at`, `activity_logs.created_at`), bukan oleh Eloquent.
+- `activity_logs.user_id` **selalu berarti pelaku**. Catatan mana yang terpengaruh dijelaskan oleh `subject_type`/`subject_id`/`subject_label`. Pemisahan inilah yang membuat entri login gagal tidak lagi salah menuduh pemilik akun sebagai pelakunya. `properties` menyimpan konteks before/after non-sensitif — **tidak pernah** memuat nilai kata sandi.
 - Statistik partisipasi = jumlah `questionnaire_responses` per kuisioner + persentase terhadap pegawai aktif + rekap per OPD.
 
 ---
@@ -150,9 +154,10 @@ controller, migration, test), bukan dari rencana:
 
 **Fase 3 belum dapat dinyatakan selesai.** Pekerjaan fitur dan pengujian otomatis
 sudah rampung — manajemen kategori, SSO Keycloak, aplikasi peraga `demo-sso/`,
-kesiapan deployment, serta **187 test lolos (975 assertion)** — tetapi **deployment
-nyata dan UAT bersama pembimbing lapangan belum dilakukan**. Deployment akan
-ditempuh lewat **Docker**.
+single logout back-channel, berkas kontainer, serta **238 test lolos
+(1156 assertion)** — tetapi **deployment nyata dan UAT bersama pembimbing lapangan
+belum dilakukan**. Deployment akan ditempuh lewat **Docker**, dan berkas
+kontainernya sendiri **belum pernah dibangun** (lihat §12.8).
 
 Sisa pekerjaan sampai akhir KP (daftar lengkap beserta pemiliknya ada di
 **ROADMAP.md**, dipisah antara yang *menghalangi serah terima* dan yang *baik untuk
@@ -704,10 +709,12 @@ KEYCLOAK_CLIENT_SECRET=
 KEYCLOAK_REDIRECT_URI=
 
 LOG_CHANNEL=stack
+LOG_STACK=daily                # WAJIB — lihat catatan di bawah
+LOG_DAILY_DAYS=14
 LOG_LEVEL=warning
 ```
 
-Empat variabel yang perilakunya tidak terduga bila salah:
+Lima variabel yang perilakunya tidak terduga bila salah:
 
 **`TURNSTILE_SECRET` — kosong di produksi berarti login DITOLAK seluruhnya.**
 Ini disengaja (`AuthController::turnstilePasses`). Di `local`/`testing` verifikasi
@@ -734,6 +741,16 @@ dipublikasikan sama sekali, jadi `*` masih dapat diterima. Pada Jalur B, atau
 bila port aplikasi terbuka, isi dengan alamat IP proxy yang sebenarnya —
 header `X-Forwarded-For` dapat dipalsukan, dan itu memalsukan alamat IP yang
 tercatat di jejak audit.
+
+**`LOG_STACK=daily`, jangan `single`.** Driver `single` menulis ke **satu berkas
+selamanya**, tanpa apa pun yang menghentikannya. Di server itu berarti berkas log
+tumbuh sampai memenuhi disk — dan ketika disk penuh, aplikasi ikut mati. Pada
+Jalur A berkas itu hidup di volume `eoffice-storage`, jadi ia bertahan melewati
+setiap redeploy dan hanya bertambah. Driver `daily` merotasinya dan menyimpan
+sebanyak `LOG_DAILY_DAYS` hari (bawaan 14).
+
+Sebagai gambaran skalanya: basis data pengembangan di laptop tim sudah
+menghasilkan `laravel.log` berukuran **14 MB** hanya dari pemakaian sehari-hari.
 
 ---
 

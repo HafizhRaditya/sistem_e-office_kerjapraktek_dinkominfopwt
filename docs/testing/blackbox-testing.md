@@ -9,15 +9,18 @@
 
 | Hal | Keterangan |
 |---|---|
-| Tanggal uji | 27 Juli 2026 (pembaruan; pengujian awal 22 Juli 2026) |
-| Commit diuji | branch `feat/keycloak-sso` di atas `0825169` |
+| Tanggal uji | 31 Juli 2026 (pembaruan; pengujian awal 22 Juli 2026) |
+| Commit diuji | `c952953` di atas `main` |
 | Stack | Laravel 13.19 · PHP 8.4.12 · PostgreSQL 18.4 |
 | Basis data uji | `sistem_eoffice_test` (terpisah dari `sistem_eoffice` pengembangan) |
 | Perintah | `php artisan test` |
-| Hasil suite | **187 test lolos, 0 gagal, 975 assertion** |
+| Hasil suite | **238 test lolos, 0 gagal, 1156 assertion** |
 
 > Riwayat: 116 test (22 Juli, sebelum modul SSO) → 155 (tombol SSO) → 178
-> (alur SSO penuh) → **187** setelah pendaratan berbasis peran dikunci test.
+> (alur SSO penuh) → 187 (pendaratan berbasis peran) → **238** setelah audit
+> menyeluruh 30–31 Juli menambahkan 51 test: gerbang admin Livewire, pencabutan
+> akses, konsistensi NIP/NIK, single logout back-channel, dan pengerasan
+> deployment (§5–§9).
 
 Akun uji dari seeder (`EofficeV21Seeder`), seluruh sandi `password`:
 
@@ -46,6 +49,15 @@ diisi berdasarkan keluaran `php artisan test` yang nyata, bukan pengamatan manua
 > membuat **tepat** test yang menargetkannya gagal — membuktikan test benar-benar
 > menguji perilaku tersebut, bukan sekadar hijau. Kode dikembalikan seperti semula
 > setelah pemeriksaan.
+>
+> Pemeriksaan yang sama diulang untuk skenario baru §5–§9. Empat mutasi
+> tambahan: pemeriksaan klaim `events` dan larangan `nonce` pada logout token
+> (masing-masing dimatikan terpisah, dan keduanya terbukti berdiri sendiri —
+> saat `events` dimatikan, ID token yang diputar ulang masih tertangkap oleh
+> `nonce`); pembatasan skema URL tautan aplikasi (dengan aturan lama,
+> `javascript:alert(document.cookie)` lolos tanpa satu pun galat); dan
+> pencabutan `EnsureUserIsAdmin` dari daftar putih Livewire, yang membuktikan
+> guard di dalam komponen menolak sendirian tanpa bantuan middleware.
 
 ---
 
@@ -145,7 +157,170 @@ oleh `KeycloakSsoLoginTest` (23 test) dan `KeycloakLoginButtonTest` (5 test).
 
 ---
 
-## 5. Catatan Interpretasi (untuk pembahasan Bab 4)
+## 5. Tabel Pengujian GERBANG ADMIN LIVEWIRE (LWG-01 – LWG-10)
+
+Ketiga tabel panel admin (Hak Akses, Pengguna, Aplikasi) dirender oleh komponen
+Livewire. Halamannya dijaga `['auth', EnsureUserIsAdmin]`, tetapi pencarian dan
+paginasi **tidak kembali lewat rute itu** — keduanya menuju endpoint update milik
+Livewire, yang hanya terdaftar dengan `['web', RequireLivewireHeaders]`. Livewire
+memutar ulang middleware rute asal, tetapi hanya kelas yang ada di daftar
+putihnya, dan daftar itu memuat `Authenticate` milik Illuminate — bukan gerbang
+admin proyek ini. Akibatnya `auth` berlaku ulang sementara gerbang admin tidak.
+
+Berkas test: `LivewireAdminGuardTest`
+
+| ID | Skenario | Langkah | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **LWG-01** | Gerbang rute biasa (dasar) | Pegawai membuka `/admin/akses`, `/admin/pengguna`, `/admin/aplikasi` | 403 pada ketiganya | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-02** | Pencarian lewat endpoint Livewire | Snapshot admin diputar ulang oleh pegawai dengan `updates: {q}` pada ketiga komponen | **403 tepat** pada ketiganya | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-03** | Paginasi lewat endpoint Livewire | Sama, dengan `calls: nextPage` | **403 tepat** pada ketiganya | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-04** | Data pegawai tidak bocor | Pegawai mencari `"admin"` pada komponen tabel pengguna | 403, dan badan respons tidak memuat nama admin, penanda komponen, maupun header tabel | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-05** | Admin diturunkan di tengah sesi | Peran diubah jadi `pegawai` selagi tab panel masih terbuka, lalu komponen dipakai | 403 — komponen yang sudah termuat ikut tertutup | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-06** | Akun dinonaktifkan di tengah sesi | `is_active=false` selagi komponen termuat | 403 | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-07** | Guard komponen berdiri sendiri | `EnsureUserIsAdmin` **dicabut** dari daftar putih Livewire, lalu endpoint ditembak lagi | Tetap 403 — `boot()` komponen menolak tanpa bantuan middleware | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-08** | Bukan penguncian keliru | Admin sah memakai ketiga tabel | 200 pada ketiganya | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-09** | Aksi tulis tetap tertutup | Pegawai menembak `PATCH /admin/pengguna/{id}/status` dan `PUT /admin/akses/{id}` | 403, dan status akun sasaran tidak berubah | Sesuai | ✅ Lolos (otomatis) |
+| **LWG-10** | Snapshot tidak dapat dipalsukan | Pegawai mengambil snapshot sah miliknya sendiri dari dashboard, lalu menukar nama komponen menjadi `admin.user-table` | Ditolak — checksum HMAC menahan | Sesuai | ✅ Lolos (otomatis) |
+
+> **Batas keparahan.** LWG-09 dan LWG-10 sengaja ada untuk **membatasi** klaim,
+> bukan memperbesarnya: paparan ini bersifat **baca-saja**, dan menuntut snapshot
+> asli yang pernah dirender untuk seorang admin. Pegawai yang tidak pernah punya
+> akses admin tidak dapat mengarangnya. Jalur nyatanya adalah perubahan peran
+> atau status di tengah sesi (LWG-05, LWG-06).
+
+---
+
+## 6. Tabel Pengujian PENCABUTAN AKSES (REV-01 – REV-09)
+
+Kedua jalur login memeriksa `is_active`, tetapi hanya pada saat masuk. Sesudah
+itu tidak ada yang membacanya lagi, sehingga menonaktifkan akun membiarkan
+pegawai yang sudah masuk bekerja sampai sesinya kedaluwarsa sendiri — hingga
+`SESSION_LIFETIME` menit kemudian. Mengganti kata sandi juga tidak mengakhiri
+sesi lain milik akun yang sama.
+
+Berkas test: `RevokedAccessTest` · driver sesi dinaikkan ke `database` pada test
+yang menguji pencabutan, karena `phpunit.xml` memakai `array` sehingga tabel
+`sessions` tidak terpakai.
+
+| ID | Skenario | Langkah | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **REV-01** | Pegawai aktif tidak terganggu | Pegawai aktif membuka portal | 200 | Sesuai | ✅ Lolos (otomatis) |
+| **REV-02** | Nonaktif memutus sesi berjalan | Akun dinonaktifkan selagi pegawai sudah masuk, lalu memuat halaman | Diarahkan ke `/login` pada request **berikutnya**, bukan menunggu kedaluwarsa | Sesuai | ✅ Lolos (otomatis) |
+| **REV-03** | Nonaktif pada endpoint Livewire | Akun nonaktif menembak endpoint update Livewire | **403 keras**, bukan 302 yang ditelan klien | Sesuai | ✅ Lolos (otomatis) |
+| **REV-04** | Admin nonaktif kehilangan panel | Admin dinonaktifkan, lalu membuka `/admin/akses` | Diarahkan ke `/login` | Sesuai | ✅ Lolos (otomatis) |
+| **REV-05** | Pencabutan menyisakan sesi yang ditunjuk | Tiga sesi milik satu pengguna, satu ditunjuk untuk disisakan | Dua tercabut, yang ditunjuk bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **REV-06** | Pencabutan menyeluruh | Tanpa sesi yang disisakan | Seluruh sesi pengguna itu tercabut | Sesuai | ✅ Lolos (otomatis) |
+| **REV-07** | Driver lain tidak mengklaim berhasil | `SESSION_DRIVER` bukan `database` | Mengembalikan 0, mencatat peringatan, dan sesi **tidak** tersentuh — kegagalan yang berisik, bukan senyap | Sesuai | ✅ Lolos (otomatis) |
+| **REV-08** | Ganti sandi sendiri mencabut perangkat lain | Pegawai mengganti sandinya sendiri | Sesi di perangkat lain berakhir; sesi yang sedang dipakai bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **REV-09** | Reset oleh admin mencabut seluruhnya | Admin mereset sandi seorang pegawai | **Seluruh** sesi pegawai itu berakhir — sesi itu milik target, bukan milik admin yang mereset | Sesuai | ✅ Lolos (otomatis) |
+
+> **Kenapa REV-09 mencabut seluruhnya.** Reset kata sandi oleh admin adalah
+> tindakan yang diambil justru ketika sebuah akun diduga dibobol. Menyisakan satu
+> sesi berarti menyisakan kemungkinan sesi penyusup.
+
+---
+
+## 7. Tabel Pengujian KONSISTENSI NIP/NIK (NIK-01 – NIK-09)
+
+Kolom `nip_nik` memakai UNIQUE biasa, dan PostgreSQL menerapkannya **peka huruf
+besar-kecil**. Kedua pintu masuk berbeda pendapat soal artinya: callback Keycloak
+mencocokkan dengan `lower()` di kedua sisi, formulir sandi mencocokkan persis.
+Akibatnya pegawai yang tersimpan sebagai `ADMIN001` bisa masuk lewat SSO dengan
+mengetik `admin001`, tetapi ditolak di formulir walau kata sandinya benar.
+
+Berkas test: `NipNikCaseConsistencyTest`
+
+| ID | Skenario | Langkah | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **NIK-01** | Beda huruf besar-kecil tetap masuk | Login dengan `ADMIN` untuk akun tersimpan `admin` | Berhasil, terautentikasi sebagai akun yang benar | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-02** | Ejaan persis tetap berjalan | Login dengan `admin` | Berhasil | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-03** | NIP tak dikenal tetap ditolak | Login dengan NIP yang tidak terdaftar | Ditolak, tetap tamu | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-04** | Baris bertabrakan tidak mengunci pemiliknya | Dua akun `UJICASE001` dan `ujicase001` ada; masing-masing login dengan ejaan persisnya | Keduanya berhasil, masing-masing ke akunnya sendiri | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-05** | Ambigu tanpa ejaan persis ditolak | Mengetik `UjiCase001` yang tidak sama persis dengan keduanya | Ditolak — menebak berisiko memasukkan seseorang ke akun rekannya | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-06** | Tabrakan baru tidak dapat dibuat | Admin menambah pengguna ber-NIP `ADMIN` sementara `admin` sudah ada | Ditolak, akun tidak terbuat | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-07** | Ubah NIP jadi bertabrakan ditolak | Admin mengubah NIP pegawai menjadi `Admin` | Ditolak, NIP lama bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-08** | Menyimpan tanpa mengubah NIP tetap boleh | Admin menyimpan pengguna dengan NIP-nya sendiri tidak berubah | Berhasil — aturan `ignore` bekerja | Sesuai | ✅ Lolos (otomatis) |
+| **NIK-09** | Perintah konsol ikut menolak | `eoffice:create-admin --nip=Admin` | Keluar dengan kode 1, akun tidak terbuat | Sesuai | ✅ Lolos (otomatis) |
+
+> **Batas yang jujur.** Perbaikan ini bekerja di **tingkat aplikasi**. Selama
+> belum ada unique index pada `lower(nip_nik)` (atau kolom `citext`), dua baris
+> yang berbeda hanya oleh huruf besar-kecil masih sah tersimpan bila dibuat
+> langsung lewat SQL atau seeder. Batasan basis data itu memerlukan migration dan
+> belum dikerjakan.
+
+---
+
+## 8. Tabel Pengujian SINGLE LOGOUT BACK-CHANNEL (SLO-01 – SLO-19)
+
+Ketika pegawai keluar dari aplikasi lain — atau dari konsol akun Keycloak —
+Keycloak memanggil portal **server-ke-server** dan memerintahkan menutup sesi
+yang bersangkutan. Pada panggilan itu tidak ada browser, tidak ada sesi, dan
+tidak ada token CSRF, sehingga **logout token yang ditandatangani adalah
+satu-satunya bukti** bahwa permintaan itu asli. Karena itu mayoritas tabel ini
+menguji **penolakan**.
+
+Realm Dinkominfo mengiklankan `backchannel_logout_session_supported: true` pada
+dokumen discovery; menurut OIDC Back-Channel Logout 1.0, itu persis janji bahwa
+klaim `sid` disertakan di ID token — sehingga jalur ber-`sid` adalah jalur
+normal, bukan cadangan.
+
+Berkas test: `KeycloakBackchannelLogoutTest` · discovery dan JWKS dilayani
+handler lokal; seluruh token ditandatangani sungguhan dengan kunci uji statis,
+sehingga verifikasi tanda tangan yang diuji adalah verifikasi yang asli.
+
+| ID | Skenario | Langkah | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **SLO-01** | `sid` tersimpan saat callback | Login SSO dengan ID token bermuatan `sid` | `sid` tersimpan di payload sesi | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-02** | Realm tanpa `sid` tidak merusak login | ID token tanpa `sid` | Login tetap berhasil; `sid` kosong | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-03** | Logout token sah mengakhiri sesi yang tepat | Token ber-`sid` untuk salah satu dari dua sesi | Hanya sesi ber-`sid` cocok yang berakhir | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-04** | Token tanpa `sid` mengakhiri seluruh sesi subjek | Token hanya ber-`sub` | Seluruh sesi subjek berakhir | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-05** | Sesi pengguna lain tidak tersentuh | `sid` sama, pemilik berbeda | Sesi milik orang lain bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-06** | Jejak audit tercatat | Sesi diakhiri lewat back-channel | Entri `logout_sso_backchannel` dengan aktor `null` (tidak ada yang login pada request itu) | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-07** | Tanda tangan kunci asing ditolak | Token ditandatangani kunci penyerang ber-`kid` **sama** | 400, sesi bertahan — penolakan hanya mungkin dari tanda tangan yang tidak cocok | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-08** | ID token diputar ulang ditolak | Token sah tanpa `events`, dengan `nonce` | 400, sesi bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-09** | Tanpa klaim `events` ditolak | `events` dihapus | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-10** | Ber-`nonce` ditolak | `nonce` ditambahkan | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-11** | Audience lain ditolak | `aud` diubah | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-12** | Issuer lain ditolak | `iss` diubah | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-13** | Token kedaluwarsa ditolak | `exp` di masa lalu | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-14** | Tanpa `logout_token` ditolak | Body kosong | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-15** | Bukan JWT ditolak | String sembarang | 400 | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-16** | Pengulangan tidak diproses dua kali | Token sama dikirim ulang | 200 (agar Keycloak tidak mengulang terus) tetapi sesi **tidak** diakhiri lagi | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-17** | Subjek tak dikenal dijawab 200 | `sub` yang tidak tertaut akun mana pun | 200 tanpa efek — 400 akan memberi tahu pemanggil tak terautentikasi subjek mana yang ada | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-18** | `sid` tidak cocok tidak mengakhiri apa pun | `sid` berbeda dari sesi yang ada | 200, sesi bertahan | Sesuai | ✅ Lolos (otomatis) |
+| **SLO-19** | 404 saat SSO tidak dikonfigurasi | `KEYCLOAK_*` dikosongkan | 404 — deployment tanpa SSO tidak memaparkan apa pun | Sesuai | ✅ Lolos (otomatis) |
+
+> **Prasyarat sisi Keycloak.** Endpoint ini tidak akan pernah dipanggil sebelum
+> kolom *Backchannel logout URL* dan *Backchannel logout session required* diisi
+> pada client `eoffice-portal`. Lihat README §10.7 — pengisiannya memerlukan
+> akses admin realm produksi.
+
+---
+
+## 9. Tabel Pengujian PENGERASAN DEPLOYMENT (DEP-01 – DEP-04)
+
+Berkas test: `AdminApplicationCrudTest`, `CsrfExemptionTest`
+
+| ID | Skenario | Langkah | Hasil Diharapkan | Hasil Aktual | Status |
+|---|---|---|---|---|---|
+| **DEP-01** | Skema URL tautan aplikasi dibatasi | Menyimpan tautan ber-skema `javascript:`, `data:`, `file:`, `ftp:` | Keempatnya ditolak; `https://` tetap diterima | Sesuai | ✅ Lolos (otomatis) |
+| **DEP-02** | Endpoint back-channel dikecualikan CSRF | Memeriksa daftar pengecualian middleware | Path back-channel logout ada di dalamnya | Sesuai | ✅ Lolos (otomatis) |
+| **DEP-03** | Pengecualian tepat satu path | Membaca `getExcludedPaths()` | Persis satu entri | Sesuai | ✅ Lolos (otomatis) |
+| **DEP-04** | Rute lain tetap terlindungi | Memeriksa `login`, `logout`, `ubah-sandi`, seluruh aksi panel admin, `kuisioner/{id}/klik`, callback SSO | Tidak satu pun ikut terkecuali | Sesuai | ✅ Lolos (otomatis) |
+
+> **Kenapa DEP-02 sampai DEP-04 tidak diuji lewat request HTTP.**
+> `PreventRequestForgery::handle()` memotong jalur pada `runningUnitTests()`,
+> sehingga **seluruh** suite melewati pemeriksaan CSRF. Test HTTP biasa akan
+> tetap hijau meski pengecualiannya hilang atau salah ketik, dan kegagalannya
+> baru muncul di produksi sebagai 419 pada setiap logout yang dikirim Keycloak.
+> Karena itu daftar pengecualian middleware diperiksa langsung. DEP-04 menjaga
+> arah sebaliknya: pengecualian yang terlalu lebar diam-diam mencabut proteksi
+> CSRF dari formulir yang membutuhkannya — akibat yang jauh lebih buruk daripada
+> masalah yang sedang diperbaiki.
+
+---
+
+## 10. Catatan Interpretasi (untuk pembahasan Bab 4)
 
 1. **RBAC-11 s.d. RBAC-14 bersama-sama membuktikan satu aturan desain:** admin
    menembus *izin* (tidak memerlukan baris `application_access`), tetapi **tidak**

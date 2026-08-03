@@ -199,6 +199,51 @@ class AdminApplicationCrudTest extends TestCase
     }
 
     /**
+     * A link URL must be http(s) — the scheme list, not just "looks like a URL".
+     *
+     * The value goes straight to redirect()->away() when an employee launches
+     * the application, and the validation message has always told the admin the
+     * URL "harus diawali http:// atau https://" while the rule accepted any
+     * scheme at all. Banner and Questionnaire already restricted the scheme;
+     * this is the one that did not.
+     */
+    public function test_link_url_with_a_non_http_scheme_is_rejected(): void
+    {
+        $this->actingAs($this->admin())->post(route('admin.aplikasi.store'), $this->payload(['slug' => 'uji-skema']));
+        $app = Application::where('slug', 'uji-skema')->firstOrFail();
+
+        $rejected = [
+            'javascript' => 'javascript:alert(document.cookie)',
+            'data' => 'data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==',
+            'file' => 'file:///etc/passwd',
+            'ftp' => 'ftp://contoh.banyumaskab.go.id/berkas',
+        ];
+
+        foreach ($rejected as $scheme => $url) {
+            $this->actingAs($this->admin())
+                ->post(route('admin.aplikasi.link.store', $app), [
+                    'label' => 'Uji '.$scheme,
+                    'url' => $url,
+                    'sort_order' => 0,
+                ])
+                ->assertSessionHasErrors('url');
+        }
+
+        $this->assertSame(0, $app->links()->count(), 'Tidak satu pun skema non-HTTP boleh tersimpan.');
+
+        // The rule must still let a normal URL through.
+        $this->actingAs($this->admin())
+            ->post(route('admin.aplikasi.link.store', $app), [
+                'label' => 'Frontend',
+                'url' => 'https://contoh.banyumaskab.go.id/masuk',
+                'sort_order' => 0,
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $app->links()->count());
+    }
+
+    /**
      * Applications and links are never deleted, only deactivated (field decision,
      * Dinkominfo): deleting an application cascades into its links, every
      * employee's access grants for it, and the dashboard module's visit records.
