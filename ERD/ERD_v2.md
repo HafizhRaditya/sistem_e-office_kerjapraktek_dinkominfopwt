@@ -7,7 +7,23 @@
 > tetap tersimpan.
 
 **Tanggal:** Juli 2026 · **Basis:** revisi ERD Umar (via GPT) + penyempurnaan tim · **Database:** PostgreSQL 18 (bukan 17 — sesuaikan README §4)
-**File terdampak:** `schema.sql` (v2.0), `docs/erd/ERD_v2.0_final.png`
+**File terdampak:** `ERD/schema.sql`, `ERD/ERD_v2.1_final.png`
+
+> **Catatan 3 Agustus 2026 — dokumen ini berhenti di v2.0.**
+> Skema terus berkembang sesudahnya lewat migration, dan perubahan berikut
+> **tidak tercatat pada changelog di bawah**. Semuanya sudah disusulkan ke
+> `ERD/schema.sql` (kini v2.2) dan diverifikasi identik dengan hasil migration:
+>
+> | Perubahan | Migration |
+> |---|---|
+> | Tabel **`banners`** (baru) | `000010` |
+> | `questionnaires.sort_order` | `000011` |
+> | `activity_logs.subject_type`, `subject_id`, `subject_label`, `properties` | `000012` |
+> | `users.keycloak_id` (SSO Keycloak) | `000014` |
+>
+> Gambar ERD di folder ini bernama `ERD_v2.1_final.png` dan **belum**
+> menggambarkan empat perubahan di atas. Sumber kebenaran skema adalah
+> `database/migrations/`, bukan gambar maupun berkas ini.
 
 ## Ringkasan: 12 tabel → 9 tabel
 

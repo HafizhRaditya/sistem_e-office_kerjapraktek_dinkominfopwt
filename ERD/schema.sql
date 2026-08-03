@@ -1,6 +1,20 @@
 -- ============================================================
--- schema.sql — Rebuild E-Office Banyumas (ERD v2.0 FINAL, Juli 2026)
+-- schema.sql — Rebuild E-Office Banyumas (ERD v2.2, Agustus 2026)
 -- Target: PostgreSQL 18
+--
+-- v2.2 (3 Agustus 2026) — MENYUSUL migration yang sudah berjalan.
+-- Berkas ini sempat tertinggal di v2.0 sementara migration terus berjalan,
+-- sehingga siapa pun yang membangun ulang basis data dari sini akan mendapat
+-- sistem yang RUSAK: tanpa tabel banners, dashboard gagal; tanpa subject_* pada
+-- activity_logs, panel Log Aktivitas gagal. Yang disusulkan:
+--   * + tabel banners (migration 000010)
+--   * + questionnaires.sort_order (migration 000011)
+--   * + activity_logs.subject_type/subject_id/subject_label/properties (000012)
+--   * + users.keycloak_id (migration 000014, SSO Keycloak)
+--
+-- SUMBER KEBENARAN tetap migration di database/migrations/. Berkas ini adalah
+-- rujukan desain untuk laporan dan serah terima, bukan alat deployment —
+-- produksi dibentuk oleh `php artisan migrate --force`, bukan oleh psql.
 -- v2.0 (konsolidasi revisi tim + penyempurnaan):
 --   * roles, role_user, application_role DIHAPUS -> users.role varchar + CHECK
 --   * nip & nik digabung -> users.nip_nik (satu field login, sesuai situs lama)
@@ -31,6 +45,7 @@ CREATE TABLE users (
     id                bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     opd_id            bigint       NOT NULL REFERENCES opds(id) ON DELETE RESTRICT,
     nip_nik           varchar(20)  NOT NULL UNIQUE,  -- identitas login tunggal (NIP atau NIK)
+    keycloak_id       varchar(255) UNIQUE,           -- v2.2: `sub` dari Keycloak; pengikat akun SSO
     name              varchar(150) NOT NULL,         -- termasuk gelar, mis. "ADI NUGROHO, S.Kom."
     email             varchar(150) UNIQUE,           -- nullable; UNIQUE PG mengizinkan banyak NULL
     email_verified_at timestamptz,
@@ -130,10 +145,30 @@ CREATE TABLE questionnaires (
     is_active    boolean      NOT NULL DEFAULT true,
     starts_at    timestamptz,
     ends_at      timestamptz,
+    sort_order   integer      NOT NULL DEFAULT 0,   -- v2.2: urutan tampil popup
     created_at   timestamptz  NOT NULL DEFAULT now(),
     updated_at   timestamptz  NOT NULL DEFAULT now(),
     CHECK (ends_at IS NULL OR starts_at IS NULL OR ends_at >= starts_at)
 );
+CREATE INDEX idx_questionnaires_active_order ON questionnaires(is_active, sort_order);
+
+-- v2.2: banner dashboard. Ikut antre bersama kuisioner pada popup, diurutkan
+-- oleh sort_order yang sama.
+CREATE TABLE banners (
+    id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    created_by  bigint       NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    title       varchar(200) NOT NULL,
+    description text,
+    image_path  varchar(255),
+    target_url  varchar(500),
+    is_active   boolean      NOT NULL DEFAULT true,
+    starts_at   timestamptz,
+    ends_at     timestamptz,
+    sort_order  integer      NOT NULL DEFAULT 0,
+    created_at  timestamptz  NOT NULL DEFAULT now(),
+    updated_at  timestamptz  NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_banners_active_order ON banners(is_active, sort_order);
 
 -- Partisipasi = klik tombol "Isi Kuisioner". Model Laravel: $timestamps = false
 CREATE TABLE questionnaire_responses (
@@ -153,11 +188,19 @@ CREATE TABLE activity_logs (
                                             -- password_changed | app_launched |
                                             -- quiz_clicked | access_denied
     description      text,
+    -- v2.2: konteks objek yang dikenai tindakan. user_id SELALU pelaku;
+    -- subject_* menjelaskan catatan mana yang terpengaruh. Pemisahan ini yang
+    -- membuat login gagal tidak lagi salah menuduh pemilik akun sebagai pelaku.
+    subject_type     varchar(50),
+    subject_id       bigint,
+    subject_label    varchar(200),
+    properties       jsonb,                 -- before/after non-sensitif; TIDAK PERNAH memuat kata sandi
     ip_address       varchar(45),
     user_agent       text,
     created_at       timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_logs_user_time ON activity_logs(user_id, created_at);
+CREATE INDEX idx_logs_subject   ON activity_logs(subject_type, subject_id);
 
 COMMIT;
 
