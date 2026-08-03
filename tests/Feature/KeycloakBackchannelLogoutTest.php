@@ -388,10 +388,36 @@ class KeycloakBackchannelLogoutTest extends TestCase
         $user = $this->linkedPegawai();
         $this->seedSession('sesi-target', $user->id, self::SID);
 
-        $this->postLogout($this->signLogoutToken(['exp' => time() - 60, 'iat' => time() - 600]))
+        // Expired by an hour, well past CLOCK_TOLERANCE_SECONDS. A token only a
+        // minute stale is now deliberately still accepted — that allowance is
+        // the whole point of the tolerance, and the next test pins it down.
+        $this->postLogout($this->signLogoutToken(['exp' => time() - 3600, 'iat' => time() - 7200]))
             ->assertStatus(400);
 
         $this->assertTrue($this->sessionExists('sesi-target'));
+    }
+
+    /**
+     * A token stamped a moment ahead of our clock must still be accepted.
+     *
+     * This is the regression guard for the real failure seen on 3 August 2026:
+     * the verifier ran at zero clock tolerance, so Keycloak's clock being a
+     * fraction of a second ahead was enough to refuse a valid token with "The
+     * JWT is issued in the future". Login failed intermittently, which is far
+     * harder to diagnose than failing outright.
+     */
+    public function test_token_dengan_selisih_jam_kecil_tetap_diterima(): void
+    {
+        $user = $this->linkedPegawai();
+        $this->seedSession('sesi-target', $user->id, self::SID);
+
+        // 30 seconds into the future — inside the tolerance, so it must work.
+        $this->postLogout($this->signLogoutToken(['iat' => time() + 30]))->assertOk();
+
+        $this->assertFalse(
+            $this->sessionExists('sesi-target'),
+            'Token dengan selisih jam kecil seharusnya tetap mengakhiri sesi.'
+        );
     }
 
     public function test_permintaan_tanpa_logout_token_ditolak(): void

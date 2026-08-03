@@ -13,6 +13,7 @@ use Facile\OpenIDClient\Issuer\Metadata\Provider\MetadataProviderBuilder;
 use Facile\OpenIDClient\Service\AuthorizationService;
 use Facile\OpenIDClient\Service\Builder\AuthorizationServiceBuilder;
 use Facile\OpenIDClient\Session\AuthSession;
+use Facile\OpenIDClient\Token\IdTokenVerifierBuilder;
 use Facile\OpenIDClient\Token\TokenSetInterface;
 use GuzzleHttp\Psr7\HttpFactory;
 use Illuminate\Http\Request;
@@ -65,6 +66,25 @@ final class KeycloakOidcService
 
     /** The single event that makes a logout token a logout token (OIDC BCL 1.0 §2.4). */
     public const BACKCHANNEL_LOGOUT_EVENT = 'http://schemas.openid.net/event/backchannel-logout';
+
+    /**
+     * Seconds of clock difference tolerated when checking iat / exp / nbf.
+     *
+     * The library defaults this to ZERO, and zero is wrong for OIDC. Keycloak
+     * stamps `iat` from its own clock; by the time the token has crossed the
+     * network and been parsed here, our clock may still read a fraction of a
+     * second earlier — and the verifier then rejects the token as "issued in
+     * the future". The failure is intermittent, which is the worst kind: login
+     * works, then mysteriously does not, then works again.
+     *
+     * That is not hypothetical. It is exactly what happened during the SSO
+     * test on 3 August 2026 with the two clocks only 0.1 s apart.
+     *
+     * 60 seconds is the customary allowance and is not a security hole: `exp`
+     * still ends the token's life, the signature still has to verify, and the
+     * nonce still ties an ID token to one login attempt.
+     */
+    private const CLOCK_TOLERANCE_SECONDS = 60;
 
     private ?IssuerInterface $issuer = null;
 
@@ -228,6 +248,11 @@ final class KeycloakOidcService
             issuer: (string) $this->issuerUrl(),
             clientId: (string) config('services.keycloak.client_id'),
             clientSecret: (string) config('services.keycloak.client_secret'),
+            // Same reason as the ID token path: a logout token stamped by
+            // Keycloak's clock must not be refused because ours is a moment
+            // behind. A logout that silently does not happen is worse than one
+            // that happens a second late.
+            clockTolerance: self::CLOCK_TOLERANCE_SECONDS,
             jwksProvider: (new JwksProviderBuilder())
                 ->withHttpClient($this->httpClient)
                 ->withRequestFactory(new HttpFactory())
@@ -338,6 +363,12 @@ final class KeycloakOidcService
         return $this->authorizationService ??= (new AuthorizationServiceBuilder())
             ->setHttpClient($this->httpClient)
             ->setRequestFactory($httpFactory)
+            // Without this the ID token verifier runs at zero clock tolerance
+            // and a sub-second difference against Keycloak's clock is enough to
+            // fail a perfectly good login. See CLOCK_TOLERANCE_SECONDS.
+            ->setIdTokenVerifierBuilder(
+                (new IdTokenVerifierBuilder())->setClockTolerance(self::CLOCK_TOLERANCE_SECONDS)
+            )
             ->build();
     }
 }
