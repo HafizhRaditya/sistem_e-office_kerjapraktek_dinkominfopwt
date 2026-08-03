@@ -1,5 +1,7 @@
 # E-Office Banyumas — Rebuild Project
 
+[![Tests](https://github.com/HafizhRaditya/sistem_e-office_kerjapraktek_dinkominfopwt/actions/workflows/tests.yml/badge.svg)](https://github.com/HafizhRaditya/sistem_e-office_kerjapraktek_dinkominfopwt/actions/workflows/tests.yml)
+
 > **Dokumen ini adalah sumber konteks utama proyek.** Jika Anda adalah AI assistant (Claude, Gemini, ChatGPT, Antigravity, Copilot, dll.) yang diminta membantu proyek ini, baca file ini terlebih dahulu sebelum menulis kode atau memberi saran. Patuhi konvensi, skema, dan pembagian tugas di bawah.
 
 ---
@@ -135,6 +137,7 @@ sistem_e-office_kerjapraktek_dinkominfopwt/
 5. **Data:** jangan pernah memakai data ASN asli dalam pengembangan — gunakan seeder dummy. `.env` tidak masuk Git; samakan konfigurasi lewat `.env.example`.
 6. **Setiap fitur baru** harus: berjalan, teruji manual, di-PR ke `dev`, dan dicatat sebagai bahan laporan KP.
 7. Saat membantu, **sebutkan file/tabel yang Anda ubah** dan jelaskan dampaknya ke modul partner (HNR ↔ MAU). Jangan sentuh modul partner tanpa koordinasi.
+8. **Setiap pull request diperiksa otomatis** oleh GitHub Actions (`.github/workflows/tests.yml`): seluruh suite dijalankan pada PHP 8.4 + PostgreSQL 18, ditambah pemeriksaan advisory `composer audit` dan `npm audit` sebagai job terpisah. PR yang membuat suite merah **tidak boleh di-merge**. Jalankan `php artisan test` di lokal sebelum push agar tidak menunggu CI untuk hal yang sudah bisa dilihat sendiri.
 
 ---
 

@@ -1,0 +1,144 @@
+name: Tests
+
+# Runs the full suite on every push to main and on every pull request.
+#
+# Until this existed, 27 pull requests had been merged without a single
+# automated run: a PR that broke the suite would only be noticed when somebody
+# happened to run `php artisan test` on their own laptop.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A second push to the same PR cancels the first — no point finishing a run
+# whose commit has already been superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: PHP 8.4 · PostgreSQL 18
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Matches production and local development. The domain migrations use
+        # CHECK constraints and a COALESCE expression index, so SQLite and MySQL
+        # are not substitutes.
+        image: postgres:18
+        env:
+          POSTGRES_DB: sistem_eoffice_test
+          POSTGRES_USER: eoffice
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        # Without this the first migration can race PostgreSQL's own start-up.
+        options: >-
+          --health-cmd="pg_isready -U eoffice -d sistem_eoffice_test"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      # phpunit.xml already pins APP_ENV, DB_CONNECTION and DB_DATABASE
+      # (sistem_eoffice_test). Only the connection details are supplied here,
+      # because there is no .env file in a clean checkout.
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: eoffice
+      DB_PASSWORD: secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          # Same set the Dockerfile installs. pdo_pgsql is the one the app
+          # cannot run without; composer needs zip to unpack dist packages.
+          extensions: pdo_pgsql, pgsql, intl, zip, gd, mbstring
+          coverage: none
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ runner.os }}-php8.4-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.4-
+
+      - name: Install PHP dependencies
+        # --no-dev is NOT used: the suite needs phpunit, mockery and faker.
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        # Not optional. All three Blade layouts use @vite, and only 7 of the 30
+        # test files call withoutVite() — the rest render a layout for real and
+        # need public/build/manifest.json, which is gitignored and therefore
+        # absent from a clean checkout.
+        #
+        # This step also earns its keep as a check in its own right: it is the
+        # same build the Docker image runs, and it needs outbound network
+        # because vite.config.js downloads the Inter font from fonts.bunny.net.
+        run: npm run build
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run test suite
+        run: php artisan test
+
+      - name: Verify no migration is left pending
+        # Green tests with a pending migration means the suite ran against a
+        # schema the repository no longer describes.
+        run: php artisan migrate:status
+
+  security:
+    name: Security advisories
+    runs-on: ubuntu-latest
+
+    # Deliberately a separate job. When an advisory lands in a dependency the
+    # test job stays green, and the pull request shows exactly which of the two
+    # concerns failed instead of one red mark meaning either.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, zip, mbstring
+          coverage: none
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Composer advisories
+        run: composer audit
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      - name: npm advisories
+        run: npm audit
