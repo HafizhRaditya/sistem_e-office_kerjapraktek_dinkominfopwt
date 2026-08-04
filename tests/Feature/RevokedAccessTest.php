@@ -54,6 +54,22 @@ class RevokedAccessTest extends TestCase
         ]);
     }
 
+    /**
+     * Encode session attributes the way the configured driver does.
+     *
+     * Kept in step with production rather than hard-coded: config/session.php
+     * sets serialization to 'json', and a fixture that used serialize() instead
+     * is precisely how a reader bug once went unnoticed.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private static function encodeSessionPayload(array $attributes): string
+    {
+        return config('session.serialization', 'json') === 'json'
+            ? json_encode($attributes, JSON_THROW_ON_ERROR)
+            : serialize($attributes);
+    }
+
     /** Seed a server-side session row as if this user had a browser open. */
     private function seedSession(string $id, ?int $userId): void
     {
@@ -62,7 +78,7 @@ class RevokedAccessTest extends TestCase
             'user_id' => $userId,
             'ip_address' => '127.0.0.1',
             'user_agent' => 'uji',
-            'payload' => base64_encode(serialize([])),
+            'payload' => base64_encode(self::encodeSessionPayload([])),
             'last_activity' => time(),
         ]);
     }

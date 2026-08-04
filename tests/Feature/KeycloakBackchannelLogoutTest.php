@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\KeycloakOidcService;
 use App\Support\ActivityType;
+use App\Support\UserSessions;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Promise\Create;
 use GuzzleHttp\Psr7\Response;
@@ -185,6 +186,22 @@ class KeycloakBackchannelLogoutTest extends TestCase
         return $user;
     }
 
+    /**
+     * Encode session attributes the way the configured driver does.
+     *
+     * Read from config rather than hard-coded, so the day someone switches
+     * session.serialization the fixtures follow instead of silently drifting
+     * away from production again.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    private static function encodeSessionPayload(array $attributes): string
+    {
+        return config('session.serialization', 'json') === 'json'
+            ? json_encode($attributes, JSON_THROW_ON_ERROR)
+            : serialize($attributes);
+    }
+
     /** A server-side session row as if this browser were signed in via SSO. */
     private function seedSession(string $id, ?int $userId, ?string $sid): void
     {
@@ -195,7 +212,12 @@ class KeycloakBackchannelLogoutTest extends TestCase
             'user_id' => $userId,
             'ip_address' => '127.0.0.1',
             'user_agent' => 'uji',
-            'payload' => base64_encode(serialize($attributes)),
+            // Encoded the way Laravel actually encodes it. This used to call
+            // serialize(), which quietly matched a reader that also used
+            // unserialize() — both wrong together, so the tests passed while
+            // the production path could never find a session at all.
+            // config/session.php sets serialization to 'json'.
+            'payload' => base64_encode(self::encodeSessionPayload($attributes)),
             'last_activity' => time(),
         ]);
     }
@@ -251,6 +273,44 @@ class KeycloakBackchannelLogoutTest extends TestCase
 
         $this->assertAuthenticated();
         $this->assertNull(session(KeycloakOidcService::SESSION_SID));
+    }
+
+    /**
+     * The reader must parse a session LARAVEL wrote, not one the test invented.
+     *
+     * Every other sid test seeds its own row, so the fixture and the reader can
+     * agree with each other while both disagree with production — which is
+     * exactly what happened: the fixture used serialize() and so did the
+     * reader, while config/session.php has always been set to 'json'. The tests
+     * were green and purgeByKeycloakSid() could never find a real session.
+     *
+     * This test closes that hole by logging in for real and then asking the
+     * production code to find the session Laravel itself persisted.
+     */
+    public function test_pembaca_sid_mengenali_sesi_yang_ditulis_laravel(): void
+    {
+        $this->fakeKeycloak(withTokenEndpoint: true);
+
+        $this->withSession([
+            KeycloakOidcService::SESSION_STATE => 'STATE_FOR_TEST',
+            KeycloakOidcService::SESSION_NONCE => 'NONCE_FOR_TEST',
+        ])
+            ->get('/auth/keycloak/callback?code=AUTH_CODE&state=STATE_FOR_TEST')
+            ->assertRedirect();
+
+        $user = User::where('nip_nik', self::PEGAWAI_NIP)->firstOrFail();
+
+        $rows = DB::table('sessions')->where('user_id', $user->id)->count();
+        $this->assertGreaterThan(0, $rows, 'Laravel tidak menulis baris sesi; test ini tidak menguji apa pun.');
+
+        $ended = UserSessions::purgeByKeycloakSid($user->id, self::SID);
+
+        $this->assertSame(
+            1,
+            $ended,
+            'purgeByKeycloakSid tidak mengenali sesi yang ditulis Laravel — '.
+            'format serialisasi pembaca tidak cocok dengan yang dipakai framework.'
+        );
     }
 
     public function test_logout_token_sah_mengakhiri_sesi_dengan_sid_yang_cocok(): void

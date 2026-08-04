@@ -113,7 +113,14 @@ final class UserSessions
             return null;
         }
 
-        $attributes = @unserialize($raw, ['allowed_classes' => false]);
+        /*
+        * Laravel pada proyek ini menggunakan serialisasi JSON.
+        * Tetap mendukung format PHP apabila konfigurasi diubah
+        * atau terdapat sesi lama dengan format tersebut.
+        */
+        $attributes = config('session.serialization', 'json') === 'json'
+            ? json_decode($raw, true)
+            : @unserialize($raw, ['allowed_classes' => false]);
 
         if (! is_array($attributes)) {
             return null;
@@ -121,6 +128,6 @@ final class UserSessions
 
         $sid = $attributes[KeycloakOidcService::SESSION_SID] ?? null;
 
-        return is_string($sid) ? $sid : null;
+        return is_string($sid) && $sid !== '' ? $sid : null;
     }
 }
