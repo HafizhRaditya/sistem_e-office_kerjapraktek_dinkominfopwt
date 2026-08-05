@@ -96,10 +96,16 @@ final class UserSessions
     /**
      * Read the stored Keycloak `sid` out of a raw session payload.
      *
-     * Laravel's database session driver stores base64(serialize(attributes)).
-     * allowed_classes is false on purpose: nothing here needs objects, and it
-     * removes object instantiation from the path that handles a value which
-     * ultimately traces back to an external request.
+     * The payload is base64 of whatever `session.serialization` selects. This
+     * project sets it to 'json', so the encoding is base64(json_encode(...)) —
+     * NOT serialize(), which is what this method originally assumed. That
+     * mistake made the method return null for every real session, so
+     * back-channel logout quietly ended nothing at all while reporting success.
+     *
+     * unserialize() is still supported for the 'php' setting and for sessions
+     * written before a configuration change. allowed_classes stays false there:
+     * nothing here needs objects, and it keeps object instantiation out of a
+     * path whose input ultimately traces back to an external request.
      */
     private static function payloadSid(?string $payload): ?string
     {
